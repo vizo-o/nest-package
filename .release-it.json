@@ -4,6 +4,6 @@
     },
     "npm": {
         "publish": true,
-        "tag": "latest"
+        "tag": "online-process"
     }
 }
