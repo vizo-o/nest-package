@@ -1,0 +1,130 @@
+{
+    "name": "@vizo-o/nest-package",
+    "version": "0.1.0",
+    "description": "NestJS utilities and shared code for Vizo applications",
+    "bin": {
+        "schema-generator": "./dist/src/prisma/schema-generator.js",
+        "deploy": "./dist/src/deploy.js",
+        "migrate": "./dist/src/migrate.js"
+    },
+    "files": [
+        "dist",
+        "src/prisma/schemas"
+    ],
+    "exports": {
+        "./event": {
+            "types": "./dist/src/event/index.d.ts",
+            "default": "./dist/src/event/index.js"
+        },
+        "./prisma": {
+            "types": "./dist/src/prisma/index.d.ts",
+            "default": "./dist/src/prisma/index.js"
+        },
+        "./prisma/schemas/*": "./src/prisma/schemas/*",
+        "./aws": {
+            "types": "./dist/src/aws/index.d.ts",
+            "default": "./dist/src/aws/index.js"
+        },
+        "./spec-types": {
+            "types": "./dist/src/spec/index.d.ts",
+            "default": "./dist/src/spec/index.js"
+        },
+        "./api": {
+            "types": "./dist/src/api/index.d.ts",
+            "default": "./dist/src/api/index.js"
+        },
+        "./logger-v2": {
+            "types": "./dist/src/logger-v2/index.d.ts",
+            "default": "./dist/src/logger-v2/index.js"
+        },
+        "./trace": {
+            "types": "./dist/src/trace/index.d.ts",
+            "default": "./dist/src/trace/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "lint": "sh -c 'eslint \"{src,test}/**/*.ts\" --max-warnings=0 \"$@\" && prettier --write \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\" \".*rc\" 2>/dev/null || true' --",
+        "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix --max-warnings=0 && prettier --write \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\" \".*rc\" 2>/dev/null || true",
+        "audit": "npm audit --audit-level=moderate",
+        "type-check": "tsc --noEmit",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:cov": "jest --coverage",
+        "pre-release": "npm run lint && npm run audit && npm run type-check && npm test && npm run build",
+        "release-auto": "release-it --ci minor",
+        "release": "release-it",
+        "release:ci": "npm run pre-release && release-it --ci"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vizo-o/nest-package.git"
+    },
+    "author": "Gilaad Elstein",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/vizo-o/nest-package/issues"
+    },
+    "homepage": "https://github.com/vizo-o/nest-package#readme",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "dependencies": {
+        "@aws-sdk/client-cloudformation": "^3.758.0",
+        "@aws-sdk/client-cloudwatch-logs": "^3.758.0",
+        "@aws-sdk/client-cognito-identity-provider": "^3.760.0",
+        "@aws-sdk/client-dynamodb": "^3.758.0",
+        "@aws-sdk/client-ecs": "^3.766.0",
+        "@aws-sdk/client-lambda": "^3.758.0",
+        "@aws-sdk/client-pinpoint-sms-voice-v2": "^3.758.0",
+        "@aws-sdk/client-s3": "^3.758.0",
+        "@aws-sdk/client-secrets-manager": "^3.758.0",
+        "@aws-sdk/client-sesv2": "^3.758.0",
+        "@aws-sdk/client-sns": "^3.758.0",
+        "@aws-sdk/client-sqs": "^3.758.0",
+        "@aws-sdk/client-ssm": "^3.759.0",
+        "@aws-sdk/rds-signer": "^3.758.0",
+        "@aws-sdk/s3-request-presigner": "^3.758.0",
+        "@nestjs/common": "^11.1.6",
+        "@nestjs/core": "^11.1.6",
+        "@types/aws-lambda": "^8.10.147",
+        "@types/jsonwebtoken": "^9.0.9",
+        "cron-validate": "^1.4.5",
+        "dotenv": "^16.4.7",
+        "jsonwebtoken": "^9.0.2",
+        "jwks-rsa": "^3.1.0",
+        "mathjs": "^14.3.1",
+        "nest-winston": "^1.10.2",
+        "pluralize": "^8.0.0",
+        "winston": "^3.17.0",
+        "winston-cloudwatch": "^6.3.0",
+        "yargs": "^17.7.2"
+    },
+    "devDependencies": {
+        "@eslint/js": "^8.57.1",
+        "@nestjs/testing": "^11.1.8",
+        "@testcontainers/localstack": "^11.8.1",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^22.13.10",
+        "@types/pluralize": "^0.0.33",
+        "@types/yargs": "^17.0.33",
+        "@typescript-eslint/eslint-plugin": "^8.0.0",
+        "@typescript-eslint/parser": "^8.0.0",
+        "@vizo-o/dev-tools": "^1.0.43",
+        "chalk": "^4.1.2",
+        "eslint": "^9.26.0",
+        "eslint-plugin-prettier": "^5.2.3",
+        "eslint-plugin-promise": "^6.6.0",
+        "jest": "^30.2.0",
+        "release-it": "^19.0.3",
+        "ts-jest": "^29.4.5",
+        "typescript": "^5.8.2"
+    },
+    "overrides": {
+        "fast-xml-parser": ">=5.3.6",
+        "minimatch": ">=10.2.1",
+        "file-type": ">=21.3.1",
+        "undici": ">=6.24.0"
+    }
+}

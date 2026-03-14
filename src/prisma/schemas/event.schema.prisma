@@ -1,0 +1,32 @@
+model Log {
+  id                   String             @id @default(dbgenerated("concat('log-', gen_random_uuid())"))
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt @default(now())
+  data                 Json
+
+  @@schema("event")
+}
+
+model FileRecord {
+  id                 String      @id @default(dbgenerated("concat('frc-', gen_random_uuid())"))
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt @default(now())
+  key                String      @unique
+  eTag               String
+  bucket             String
+  status             FileStatus
+  error              String?
+
+  @@schema("event")
+}
+
+enum FileStatus {
+  pending
+  processing
+  processed
+  deleted
+  error
+  ignored
+
+  @@schema("event")
+}

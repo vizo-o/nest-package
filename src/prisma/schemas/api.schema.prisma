@@ -1,0 +1,49 @@
+model AccessLog {
+  id         String   @id @default(dbgenerated("concat('acl-', gen_random_uuid())"))
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt @default(now())
+  path       String
+  method     String
+  payload    Json
+  statusCode Int
+  duration   Int
+  user       User?   @relation(fields: [userId], references: [id])
+  userId     String?
+  resource   String
+  action     String
+  error      String?
+
+  @@schema("api")
+}
+model User {
+  id           String         @id @default(dbgenerated("concat('usr-', gen_random_uuid())"))
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt @default(now())
+  email        String         @unique
+  roles        Role[]
+  accessLogs   AccessLog[]
+
+  @@schema("api")
+}
+
+model Permission {
+  id        String   @id @default(dbgenerated("concat('prm-', gen_random_uuid())"))
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+  role      Role
+  resource  Resource
+  action    Action
+
+  @@unique([role, resource, action])
+  @@schema("api")
+}
+
+enum Action {
+  any
+  create
+  read
+  update
+  delete
+
+  @@schema("api")
+}

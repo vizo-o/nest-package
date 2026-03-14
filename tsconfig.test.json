@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "./",
+        "outDir": "./dist",
+        "noEmit": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "baseUrl": "./",
+        "paths": {
+            "@/*": ["src/*"]
+        },
+        "types": ["jest", "node"]
+    },
+    "include": ["src/**/*.ts", "test/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}
