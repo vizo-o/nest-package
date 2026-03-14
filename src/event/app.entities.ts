@@ -7,7 +7,10 @@ export enum Service {
     MD_PORTAL = 'MD_PORTAL',
     ADMIN = 'ADMIN',
 }
-
+export enum JourneyType {
+    PRODUCT = 'product',
+    FOLLOWUP = 'followup',
+}
 export enum OperationalEventTypes {
     GET_FORM_DATA = 'GET_FORM_DATA',
     GET_CUSTOMER_COMMUNICATION_CHANNELS = 'GET_CUSTOMER_COMMUNICATION_CHANNELS',
@@ -26,6 +29,7 @@ export enum OperationalEventTypes {
     GET_VIZO_IDS_BY_EMAIL = 'GET_VIZO_IDS_BY_EMAIL',
     GET_CUSTOMER_CONTACT_METHODS = 'GET_CUSTOMER_CONTACT_METHODS',
     PROCESS_GAMING_ORDER = 'PROCESS_GAMING_ORDER',
+    GET_CUSTOMER_PRODUCT_STATUS = 'GET_CUSTOMER_PRODUCT_STATUS',
 }
 
 export type GetFormDataEvent = {
@@ -158,6 +162,11 @@ export type ProcessGamingOrderEvent = {
     prescriptionValidityConfirmed?: boolean
 }
 
+export type GetCustomerProductStatusEvent = {
+    type: OperationalEventTypes.GET_CUSTOMER_PRODUCT_STATUS
+    vizoId: string
+}
+
 type OperationalEventBase =
     | GetFormDataEvent
     | GetCustomerCommunicationChannels
@@ -174,6 +183,7 @@ type OperationalEventBase =
     | GetVizoIdsByEmailEvent
     | GetCustomerContactMethodsEvent
     | ProcessGamingOrderEvent
+    | GetCustomerProductStatusEvent
 
 export type OperationalEvent = EventBase | OperationalEventBase
 
@@ -247,24 +257,12 @@ export type FormsEventBase = {
 export type FormsEvent = FormsEventBase | EventBase
 
 export enum MdPortalEventTypes {
-    CREATE_NEW_APPLICATION = 'CREATE_NEW_APPLICATION',
     STOP_APPLICATION = 'STOP_APPLICATION',
-    UPSERT_ASRS_FORM = 'UPSERT_ASRS_FORM',
-    GET_APPLICATIONS_TO_REMIND = 'GET_APPLICATIONS_TO_REMIND',
-    MARK_APPLICATIONS_AS_REMINDED = 'MARK_APPLICATIONS_AS_REMINDED',
     SEND_MONTHLY_DOCTOR_ASSIGNMENT_REPORT = 'SEND_MONTHLY_DOCTOR_ASSIGNMENT_REPORT',
-    CREATE_FOLLOW_UP_SURVEY = 'CREATE_FOLLOW_UP_SURVEY',
     PROCESS_PDF_FILES = 'PROCESS_PDF_FILES',
     PROCESS_PDF_FILES_MISSING_PAGES = 'PROCESS_PDF_FILES_MISSING_PAGES',
-    GET_MD_PORTAL_APPLICATION_STATUSES = 'GET_MD_PORTAL_APPLICATION_STATUSES',
     DELETE_SUBJECT = 'DELETE_SUBJECT',
     CREATE_CUSTOMER_JOURNEY = 'CREATE_CUSTOMER_JOURNEY',
-}
-
-export type CreateApplicationEvent = {
-    type: MdPortalEventTypes.CREATE_NEW_APPLICATION
-    vizoId: string
-    applicationId: string
 }
 
 export type StopApplicationEvent = {
@@ -272,28 +270,8 @@ export type StopApplicationEvent = {
     applicationId: string
 }
 
-export type UpsertAsrsFormEvent = {
-    type: MdPortalEventTypes.UPSERT_ASRS_FORM
-    vizoId: string
-    ageGroup: string
-}
-
-export type GetApplicationsToRemindEvent = {
-    type: MdPortalEventTypes.GET_APPLICATIONS_TO_REMIND
-}
-
-export type MarkApplicationsAsRemindedEvent = {
-    type: MdPortalEventTypes.MARK_APPLICATIONS_AS_REMINDED
-    applicationIds: string[]
-}
-
 export type SendMonthlyDoctorAssignmentReportEvent = {
     type: MdPortalEventTypes.SEND_MONTHLY_DOCTOR_ASSIGNMENT_REPORT
-}
-
-export type CreateFollowUpSurveyEvent = {
-    type: MdPortalEventTypes.CREATE_FOLLOW_UP_SURVEY
-    vizoId: string
 }
 
 export type ProcessPdfFilesEvent = {
@@ -305,11 +283,6 @@ export type ProcessPdfFilesMissingPagesEvent = {
     type: MdPortalEventTypes.PROCESS_PDF_FILES_MISSING_PAGES
     takePdfs?: number
     vizoIds?: string[]
-}
-
-export type GetMdPortalApplicationStatusesEvent = {
-    type: MdPortalEventTypes.GET_MD_PORTAL_APPLICATION_STATUSES
-    applicationIds: string[]
 }
 
 export type DeleteMdPortalSubjectEvent = {
@@ -326,16 +299,10 @@ export type CreateCustomerJourneyEvent = {
 }
 
 export type MdPortalEventBase =
-    | CreateApplicationEvent
     | StopApplicationEvent
-    | UpsertAsrsFormEvent
-    | GetApplicationsToRemindEvent
-    | MarkApplicationsAsRemindedEvent
     | SendMonthlyDoctorAssignmentReportEvent
-    | CreateFollowUpSurveyEvent
     | ProcessPdfFilesEvent
     | ProcessPdfFilesMissingPagesEvent
-    | GetMdPortalApplicationStatusesEvent
     | DeleteMdPortalSubjectEvent
     | CreateCustomerJourneyEvent
 export type MdPortalEvent = EventBase | MdPortalEventBase

@@ -773,6 +773,24 @@ export class CognitoIDPService {
         )
     }
 
+    updateUserAttributes({
+        userPoolId,
+        username,
+        userAttributes,
+    }: {
+        userPoolId: string
+        username: string
+        userAttributes: Array<{ Name: string; Value: string }>
+    }) {
+        return this.client.send(
+            new AdminUpdateUserAttributesCommand({
+                UserPoolId: userPoolId,
+                Username: username,
+                UserAttributes: userAttributes,
+            }),
+        )
+    }
+
     async getUsersCreatedBefore(params: {
         userPoolId: string
         before: Date
