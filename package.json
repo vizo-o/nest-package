@@ -99,7 +99,8 @@
         "pluralize": "^8.0.0",
         "winston": "^3.17.0",
         "winston-cloudwatch": "^6.3.0",
-        "yargs": "^17.7.2"
+        "yargs": "^17.7.2",
+        "chalk": "^4.1.2"
     },
     "devDependencies": {
         "@eslint/js": "^8.57.1",
@@ -112,7 +113,6 @@
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
         "@vizo-o/dev-tools": "^1.0.46",
-        "chalk": "^4.1.2",
         "eslint": "^9.26.0",
         "eslint-plugin-prettier": "^5.2.3",
         "eslint-plugin-promise": "^6.6.0",
