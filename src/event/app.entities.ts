@@ -123,9 +123,10 @@ export type ProcessGamingOrderEvent = {
     OrderReceivedDate: string
     frameModel: string
     frameColor: string
-    GlassesType?: 'computer' | 'distance' | null
     PD: { left: string; right: string }
     PDType?: string
+    hasNearPd?: boolean
+    nearPd?: { monocular?: string; left?: string; right?: string }
     RightEye: {
         sphere: string
         cylinder: string
