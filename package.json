@@ -1,6 +1,6 @@
 {
     "name": "@vizo-o/nest-package",
-    "version": "0.1.12",
+    "version": "0.1.13",
     "description": "NestJS utilities and shared code for Vizo applications",
     "bin": {
         "schema-generator": "./dist/src/prisma/schema-generator.js",
@@ -112,7 +112,7 @@
         "@types/yargs": "^17.0.33",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
-        "@vizo-o/dev-tools": "^1.0.47",
+        "@vizo-o/dev-tools": "^1.0.50",
         "eslint": "^9.26.0",
         "eslint-plugin-prettier": "^5.2.3",
         "eslint-plugin-promise": "^6.6.0",
@@ -122,7 +122,8 @@
         "typescript": "^5.8.2"
     },
     "overrides": {
-        "fast-xml-parser": ">=5.3.6",
+        "flatted": ">=3.4.2",
+        "fast-xml-parser": ">=5.5.7",
         "minimatch": ">=10.2.1",
         "file-type": ">=21.3.1",
         "undici": ">=6.24.0"
