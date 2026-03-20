@@ -35,9 +35,9 @@ interface EventLogger {
 }
 
 @Injectable()
-export abstract class EventServiceBase<Event extends { type: string }>
-    implements OnModuleInit
-{
+export abstract class EventServiceBase<
+    Event extends { type: string },
+> implements OnModuleInit {
     eventSubscriptions: {
         [event: string]: Array<(event: Event) => Promise<EventResponse>>
     } = {}
