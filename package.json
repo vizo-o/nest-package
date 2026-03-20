@@ -122,6 +122,7 @@
         "typescript": "^5.8.2"
     },
     "overrides": {
+        "flatted": ">=3.4.2",
         "fast-xml-parser": ">=5.5.7",
         "minimatch": ">=10.2.1",
         "file-type": ">=21.3.1",
