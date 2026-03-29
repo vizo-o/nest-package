@@ -45,15 +45,14 @@
     "scripts": {
         "build": "tsc",
         "watch": "tsc -w",
-        "lint": "sh -c 'eslint \"{src,test}/**/*.ts\" --max-warnings=0 \"$@\" && prettier --write \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\" \".*rc\" 2>/dev/null || true' --",
-        "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix --max-warnings=0 && prettier --write \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\" \".*rc\" 2>/dev/null || true",
-        "audit": "npm audit --audit-level=moderate",
+        "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings=0 && prettier --check \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\"",
+        "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix --max-warnings=0 && prettier --write \"src/**/*.{ts,json}\" \"test/**/*.{ts,json}\" \"*.{json,js,mjs}\"",
+        "audit:high": "npm audit --audit-level=high",
         "type-check": "tsc --noEmit",
         "test": "jest",
         "test:watch": "jest --watch",
         "test:cov": "jest --coverage",
-        "pre-release": "npm run lint && npm run audit && npm run type-check && npm test && npm run build",
-        "release-auto": "release-it --ci minor",
+        "pre-release": "node scripts/pre-release.mjs",
         "release": "release-it",
         "release:ci": "npm run pre-release && release-it --ci"
     },
@@ -117,6 +116,7 @@
         "eslint-plugin-prettier": "^5.2.3",
         "eslint-plugin-promise": "^6.6.0",
         "jest": "^30.2.0",
+        "prettier": "^3.4.2",
         "release-it": "^19.0.3",
         "ts-jest": "^29.4.5",
         "typescript": "^5.8.2"
