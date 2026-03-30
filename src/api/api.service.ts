@@ -607,10 +607,9 @@ export abstract class ApiServiceBase implements OnModuleInit {
                 authenticatedUserEmail = customAuthEndpoint.userEmail
             }
         } else if (!customAuthEndpoint?.skipBackendTokenValidation) {
-            const rawAuthHeader =
-                Array.isArray(event.headers?.Authorization)
-                    ? event.headers?.Authorization?.[0]
-                    : event.headers?.Authorization
+            const rawAuthHeader = Array.isArray(event.headers?.Authorization)
+                ? event.headers?.Authorization?.[0]
+                : event.headers?.Authorization
             const idToken = (
                 typeof rawAuthHeader === 'string'
                     ? rawAuthHeader.replace(/^Bearer\s+/i, '')
@@ -626,7 +625,9 @@ export abstract class ApiServiceBase implements OnModuleInit {
             const shouldSkipTokenValidation =
                 !hasIdToken &&
                 ((['dev', 'local'].includes(env) &&
-                    Boolean(process.env.LOCAL_OVERRIDE_TOKEN_CHECK_WITH_EMAIL)) ||
+                    Boolean(
+                        process.env.LOCAL_OVERRIDE_TOKEN_CHECK_WITH_EMAIL,
+                    )) ||
                     localVizoStubAllowed)
 
             if (!shouldSkipTokenValidation) {
