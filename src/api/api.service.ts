@@ -607,10 +607,27 @@ export abstract class ApiServiceBase implements OnModuleInit {
                 authenticatedUserEmail = customAuthEndpoint.userEmail
             }
         } else if (!customAuthEndpoint?.skipBackendTokenValidation) {
-            // Check if we should skip token validation (local/dev override)
+            const rawAuthHeader =
+                Array.isArray(event.headers?.Authorization)
+                    ? event.headers?.Authorization?.[0]
+                    : event.headers?.Authorization
+            const idToken = (
+                typeof rawAuthHeader === 'string'
+                    ? rawAuthHeader.replace(/^Bearer\s+/i, '')
+                    : ''
+            ).trim()
+            const hasIdToken = Boolean(idToken)
+
+            const env = process.env?.ENV || ''
+            const localVizoStubAllowed =
+                env === 'local' &&
+                Boolean(process.env.LOCAL_DEV_CUSTOMER_VIZO_ID) &&
+                Boolean(customAuthEndpoint?.getPayloadFromToken)
             const shouldSkipTokenValidation =
-                ['dev', 'local'].includes(process.env?.ENV || '') &&
-                process.env.LOCAL_OVERRIDE_TOKEN_CHECK_WITH_EMAIL
+                !hasIdToken &&
+                ((['dev', 'local'].includes(env) &&
+                    Boolean(process.env.LOCAL_OVERRIDE_TOKEN_CHECK_WITH_EMAIL)) ||
+                    localVizoStubAllowed)
 
             if (!shouldSkipTokenValidation) {
                 // Only fetch client IDs if we're actually going to validate tokens
@@ -640,13 +657,13 @@ export abstract class ApiServiceBase implements OnModuleInit {
                 }
             }
 
-            const idToken = (
-                Array.isArray(event.headers?.Authorization)
-                    ? event.headers?.Authorization?.[0]
-                    : event.headers?.Authorization
-            )?.replace('Bearer ', '')
+            if (!hasIdToken && env !== 'local') {
+                throw new AuthenticationError(
+                    'The request did not pass any authorizer.',
+                )
+            }
 
-            if (!idToken && process.env?.ENV !== 'local') {
+            if (!hasIdToken && env === 'local' && !shouldSkipTokenValidation) {
                 throw new AuthenticationError(
                     'The request did not pass any authorizer.',
                 )
