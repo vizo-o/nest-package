@@ -62,24 +62,29 @@ describe('LogPerformance decorator', () => {
         })
 
         it('should measure execution time', async () => {
-            class TestService {
-                @LogPerformance(logger)
-                async slowMethod(): Promise<void> {
-                    await new Promise((resolve) => setTimeout(resolve, 50))
+            jest.useFakeTimers()
+            try {
+                class TestService {
+                    @LogPerformance(logger)
+                    async slowMethod(): Promise<void> {
+                        await new Promise((resolve) => {
+                            setTimeout(resolve, 50)
+                        })
+                    }
                 }
+
+                const service = new TestService()
+                const done = service.slowMethod()
+                await jest.advanceTimersByTimeAsync(50)
+                await done
+
+                expect(logSpy).toHaveBeenCalled()
+                const call = logSpy.mock.calls[0]
+                const duration = (call[2] as { duration: number }).duration
+                expect(duration).toBe(50)
+            } finally {
+                jest.useRealTimers()
             }
-
-            const service = new TestService()
-            await service.slowMethod()
-
-            expect(logSpy).toHaveBeenCalled()
-            const call = logSpy.mock.calls[0]
-            const duration = (call[2] as { duration: number }).duration
-            // Allow for timing variations - setTimeout isn't exact, and system load can affect timing
-            // Use a lower bound that accounts for ~10ms variance
-            expect(duration).toBeGreaterThanOrEqual(40)
-            // Also verify it's reasonable (not too high due to test pollution)
-            expect(duration).toBeLessThan(200)
         })
     })
 
