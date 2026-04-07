@@ -112,9 +112,11 @@ export type GetVizoIdsByEmailEvent = {
     email: string
 }
 
+/** Pass exactly one of vizoId or adjustmentCentersExternalId. */
 export type GetCustomerContactMethodsEvent = {
     type: OperationalEventTypes.GET_CUSTOMER_CONTACT_METHODS
-    vizoId: string
+    vizoId?: string
+    adjustmentCentersExternalId?: string
 }
 
 export type ProcessGamingOrderEvent = {
