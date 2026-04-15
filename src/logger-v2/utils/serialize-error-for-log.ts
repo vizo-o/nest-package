@@ -19,7 +19,10 @@ export type SerializedErrorForLog = {
     cause?: SerializedErrorForLog
 }
 
-function serializeUnknown(value: unknown, depth: number): SerializedErrorForLog {
+function serializeUnknown(
+    value: unknown,
+    depth: number,
+): SerializedErrorForLog {
     if (depth > MAX_CAUSE_DEPTH) {
         return {
             name: 'TruncatedError',
