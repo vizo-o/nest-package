@@ -8,3 +8,7 @@ export {
     sanitizeJsonString,
     isEmployeeUser,
 } from './utils/sanitize'
+export {
+    serializeErrorForLog,
+    type SerializedErrorForLog,
+} from './utils/serialize-error-for-log'
