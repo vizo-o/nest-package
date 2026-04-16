@@ -567,4 +567,85 @@ describe('sanitizeContext', () => {
             expect(headers.Authorization).toBe('[REDACTED]')
         })
     })
+
+    describe('Error serialization', () => {
+        it('should preserve Error message and stack in metadata', () => {
+            const err = new Error('boom')
+            err.stack = 'Error: boom\n    at test.js:1:1'
+            const sanitized = sanitizeContext({
+                gamingOrderId: 'gor-1',
+                error: err,
+            })
+            const serialized = sanitized.error as Record<string, unknown>
+            expect(serialized).toEqual(
+                expect.objectContaining({
+                    name: 'Error',
+                    message: 'boom',
+                    stack: 'Error: boom\n    at test.js:1:1',
+                }),
+            )
+            expect(serialized).not.toEqual({})
+        })
+
+        it('should serialize Prisma-like Error subclasses (code, meta, clientVersion)', () => {
+            class PrismaKnownRequestLike extends Error {
+                readonly code: string
+                readonly meta: { target: string[] }
+                readonly clientVersion: string
+                constructor() {
+                    super(
+                        'Unique constraint failed on the fields: (`serial_number`)',
+                    )
+                    this.name = 'PrismaClientKnownRequestError'
+                    this.code = 'P2002'
+                    this.meta = { target: ['serial_number'] }
+                    this.clientVersion = '5.22.0'
+                }
+            }
+            const sanitized = sanitizeContext({
+                error: new PrismaKnownRequestLike(),
+            })
+            const serialized = sanitized.error as Record<string, unknown>
+            expect(serialized.name).toBe('PrismaClientKnownRequestError')
+            expect(serialized.message).toContain('Unique constraint')
+            expect(serialized.code).toBe('P2002')
+            expect(serialized.meta).toEqual({ target: ['serial_number'] })
+            expect(serialized.clientVersion).toBe('5.22.0')
+        })
+
+        it('should serialize nested Error values', () => {
+            const sanitized = sanitizeContext({
+                outer: { inner: new Error('nested') },
+            })
+            const inner = (sanitized.outer as Record<string, unknown>)
+                .inner as Record<string, unknown>
+            expect(inner.message).toBe('nested')
+        })
+
+        it('should serialize Error instances inside arrays', () => {
+            const sanitized = sanitizeContext({
+                failures: [new Error('a'), new Error('b')],
+            })
+            const failures = sanitized.failures as Array<
+                Record<string, unknown>
+            >
+            expect(failures[0].message).toBe('a')
+            expect(failures[1].message).toBe('b')
+        })
+
+        it('should serialize error cause chain with depth limit', () => {
+            const root = new Error('root')
+            const mid = new Error('mid')
+            const top = new Error('top')
+            mid.cause = root
+            top.cause = mid
+            const sanitized = sanitizeContext({ error: top })
+            const s = sanitized.error as Record<string, unknown>
+            expect(s.message).toBe('top')
+            const c1 = s.cause as Record<string, unknown>
+            expect(c1.message).toBe('mid')
+            const c2 = c1.cause as Record<string, unknown>
+            expect(c2.message).toBe('root')
+        })
+    })
 })

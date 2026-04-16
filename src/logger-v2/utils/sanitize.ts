@@ -1,3 +1,5 @@
+import { serializeErrorForLog } from './serialize-error-for-log'
+
 /**
  * Employee roles that indicate internal users
  */
@@ -347,6 +349,9 @@ export function sanitizeContext(
         ) {
             // Partial phone number redaction
             sanitized[key] = redactPhoneNumber(value)
+        } else if (value instanceof Error) {
+            // Error (incl. Prisma subclasses): enumerable spread loses message/stack
+            sanitized[key] = serializeErrorForLog(value)
         } else if (
             typeof value === 'object' &&
             value !== null &&
@@ -381,6 +386,9 @@ export function sanitizeContext(
         } else if (Array.isArray(value)) {
             // Handle arrays
             sanitized[key] = value.map((item) => {
+                if (item instanceof Error) {
+                    return serializeErrorForLog(item)
+                }
                 if (
                     typeof item === 'object' &&
                     item !== null &&
