@@ -209,6 +209,19 @@ export class AuthenticationError extends AppError {
     }
 }
 
+/**
+ * Expected client auth failures (e.g. expired session on an embedded view).
+ * Same HTTP semantics as AuthenticationError but does not enqueue admin incidents.
+ */
+export class SilentAuthenticationError extends AuthenticationError {
+    notifyAdmin = false
+
+    constructor(message: string) {
+        super(message)
+        Object.setPrototypeOf(this, SilentAuthenticationError.prototype)
+    }
+}
+
 export class AuthorizationError extends AppError {
     constructor(message: string) {
         super(message, 403)
