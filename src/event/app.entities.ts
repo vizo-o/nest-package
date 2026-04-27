@@ -30,6 +30,7 @@ export enum OperationalEventTypes {
     GET_CUSTOMER_CONTACT_METHODS = 'GET_CUSTOMER_CONTACT_METHODS',
     PROCESS_GAMING_ORDER = 'PROCESS_GAMING_ORDER',
     GET_CUSTOMER_PRODUCT_STATUS = 'GET_CUSTOMER_PRODUCT_STATUS',
+    REGISTER_MD_PORTAL_APPLICATION = 'REGISTER_MD_PORTAL_APPLICATION',
 }
 
 export type GetFormDataEvent = {
@@ -170,6 +171,12 @@ export type GetCustomerProductStatusEvent = {
     vizoId: string
 }
 
+export type RegisterMdPortalApplicationEvent = {
+    type: OperationalEventTypes.REGISTER_MD_PORTAL_APPLICATION
+    vizoId: string
+    applicationId: string
+}
+
 type OperationalEventBase =
     | GetFormDataEvent
     | GetCustomerCommunicationChannels
@@ -187,6 +194,7 @@ type OperationalEventBase =
     | GetCustomerContactMethodsEvent
     | ProcessGamingOrderEvent
     | GetCustomerProductStatusEvent
+    | RegisterMdPortalApplicationEvent
 
 export type OperationalEvent = EventBase | OperationalEventBase
 
