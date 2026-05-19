@@ -120,12 +120,40 @@ export type GetCustomerContactMethodsEvent = {
     adjustmentCentersExternalId?: string
 }
 
+/**
+ * Face mesh payload for PROCESS_GAMING_ORDER after face-scan-to-S3 rollout.
+ * Only explicit PD mesh indices (no dense MediaPipe landmark array).
+ */
+export type ProcessGamingOrderFaceScanV2 = {
+    data: {
+        imgSize: { imgWidth: number; imgHeight: number }
+        landmarksPdMesh: Array<{
+            index: number
+            x: number
+            y: number
+            z: number
+        }>
+        meta: { version: 2 }
+        faceScanImageS3Key?: string
+        faceScanLandmarksArtifactS3Key?: string
+        faceScanArtifactsBucket?: string
+    }
+}
+
+/** One catalog line in onboarding SQS body; frame/color are per product — not on event root. */
+export type ProcessGamingOrderProduct = {
+    sku: string
+    frame: string
+    color: string
+    commercialName: string
+    requiresPrescription: boolean
+}
+
 export type ProcessGamingOrderEvent = {
     type: OperationalEventTypes.PROCESS_GAMING_ORDER
     PurchaseID: string
     OrderReceivedDate: string
-    frameModel: string
-    frameColor: string
+    products: ProcessGamingOrderProduct[]
     PD: { left: string; right: string }
     PDType?: string
     hasNearPd?: boolean
@@ -142,12 +170,7 @@ export type ProcessGamingOrderEvent = {
         axis: string
         addition: string
     }
-    FaceScan?: {
-        data: {
-            landmarks: Array<{ x: number; y: number; z: number }>
-            imgSize?: { imgWidth: number; imgHeight: number }
-        }
-    }
+    FaceScan?: ProcessGamingOrderFaceScanV2
     CognitiveGame?: unknown
     SkillsAssessment?: {
         ratings: {
@@ -164,6 +187,11 @@ export type ProcessGamingOrderEvent = {
     prescriptionDocumentS3Bucket?: string
     prescriptionMethod?: 'manual' | 'upload'
     prescriptionValidityConfirmed?: boolean
+    purchaseSource?: string
+    specialOptics?: string
+    vv?: string
+    vizoId?: string
+    customerId?: string
 }
 
 export type GetCustomerProductStatusEvent = {

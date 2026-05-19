@@ -16,6 +16,10 @@
             "types": "./dist/src/event/index.d.ts",
             "default": "./dist/src/event/index.js"
         },
+        "./event/app-entities": {
+            "types": "./dist/src/event/app.entities.d.ts",
+            "default": "./dist/src/event/app.entities.js"
+        },
         "./prisma": {
             "types": "./dist/src/prisma/index.d.ts",
             "default": "./dist/src/prisma/index.js"
