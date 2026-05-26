@@ -337,6 +337,7 @@ export type CreateCustomerJourneyEvent = {
     gender?: 'male' | 'female' | 'other'
     specificAgeGroup?: '7-12' | '12-18' | '18-30' | '30-50' | '50+'
     applicationId?: string
+    includeClinicalForms?: boolean
 }
 
 export type MdPortalEventBase =
