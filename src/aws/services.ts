@@ -448,9 +448,7 @@ export class LambdaService {
             throw new Error(`Lambda ${functionName} returned empty payload`)
         }
 
-        return JSON.parse(
-            Buffer.from(output.Payload).toString(),
-        ) as TResponse
+        return JSON.parse(Buffer.from(output.Payload).toString()) as TResponse
     }
 }
 
