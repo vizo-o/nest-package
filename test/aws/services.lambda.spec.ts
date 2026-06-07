@@ -240,4 +240,37 @@ describe('LambdaService Trace Context Injection', () => {
             )
         })
     })
+
+    describe('invokeFunction', () => {
+        it('should invoke a lambda by name and return parsed payload', async () => {
+            mockSend.mockResolvedValue({
+                StatusCode: 200,
+                Payload: Buffer.from(
+                    JSON.stringify({
+                        s3Key: 'shipping-invoices/test.pdf',
+                        bucket: 'operational-bucket',
+                    }),
+                ),
+            })
+
+            const result = await lambdaService.invokeFunction<{
+                s3Key: string
+                bucket: string
+            }>({
+                functionName: 'shipping-invoice-generator',
+                payload: { purchaseId: 'purchase-123' },
+            })
+
+            expect(result).toEqual({
+                s3Key: 'shipping-invoices/test.pdf',
+                bucket: 'operational-bucket',
+            })
+            expect(mockSend).toHaveBeenCalledTimes(1)
+            const invokeCommand = mockSend.mock.calls[0][0]
+            expect(invokeCommand.input.FunctionName).toBe(
+                'shipping-invoice-generator',
+            )
+            expect(invokeCommand.input.InvocationType).toBe('RequestResponse')
+        })
+    })
 })

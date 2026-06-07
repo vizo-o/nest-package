@@ -328,6 +328,18 @@ export class LambdaService {
         )
     }
 
+    invokeFunction<TResponse = unknown>({
+        functionName,
+        payload,
+        async = false,
+    }: {
+        functionName: string
+        payload: unknown
+        async?: boolean
+    }): Promise<TResponse> {
+        return this.invokeRaw(functionName, payload, async)
+    }
+
     /**
      * Inject trace context into payload for downstream service calls
      * Automatically adds _traceContext field if trace context is available
@@ -364,7 +376,50 @@ export class LambdaService {
         payload: unknown,
         async: boolean,
     ) {
-        // Inject trace context before sending
+        if (async) {
+            return this.invokeRaw<{ status: number; message: string }>(
+                functionName,
+                payload,
+                true,
+            )
+        }
+
+        const response = await this.invokeRaw<{
+            body?: string
+            errorMessage?: string
+        }>(functionName, payload, false)
+
+        let body
+        let data
+        try {
+            body = JSON.parse(response.body || '')[0]
+        } catch {
+            return {
+                status: 500,
+                message: `Received Error from ${functionName}, error:${
+                    response.errorMessage ?? 'Error'
+                }`,
+                data: response,
+            }
+        }
+        try {
+            data = JSON.parse(body.data)
+        } catch {
+            data = body?.data
+        }
+
+        return {
+            status: body.status || 200,
+            message: body.message || 'Success',
+            ...(data && { data }),
+        }
+    }
+
+    private async invokeRaw<TResponse>(
+        functionName: string,
+        payload: unknown,
+        async: boolean,
+    ): Promise<TResponse> {
         const enrichedPayload = this.injectTraceContext(payload)
 
         const invokePayload: InvocationRequest = {
@@ -382,41 +437,20 @@ export class LambdaService {
             return {
                 status: output.StatusCode || 202,
                 message: 'Event dispatched',
-            }
+            } as TResponse
         }
 
         if (output.FunctionError && output.FunctionError !== 'Unhandled') {
             throw new Error(output.FunctionError)
         }
 
-        const response = JSON.parse(
-            Buffer.from(output.Payload || []).toString(),
-        )
-
-        let body
-        let data
-        try {
-            body = JSON.parse(response.body)[0]
-        } catch {
-            return {
-                status: 500,
-                message: `Received Error from ${functionName}, error:${
-                    response.errorMessage ?? 'Error'
-                }`,
-                data: response,
-            }
-        }
-        try {
-            data = JSON.parse(body.data)
-        } catch {
-            data = body?.data
+        if (!output.Payload) {
+            throw new Error(`Lambda ${functionName} returned empty payload`)
         }
 
-        return {
-            status: body.status || output.StatusCode || 200,
-            message: body.message || 'Success',
-            ...(data && { data }),
-        }
+        return JSON.parse(
+            Buffer.from(output.Payload).toString(),
+        ) as TResponse
     }
 }
 
