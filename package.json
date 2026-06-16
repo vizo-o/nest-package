@@ -1,6 +1,6 @@
 {
     "name": "@vizo-o/nest-package",
-    "version": "0.1.36",
+    "version": "0.1.37",
     "description": "NestJS utilities and shared code for Vizo applications",
     "bin": {
         "schema-generator": "./dist/src/prisma/schema-generator.js",
