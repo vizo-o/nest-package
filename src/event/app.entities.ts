@@ -10,6 +10,7 @@ export enum Service {
 export enum JourneyType {
     PRODUCT = 'product',
     FOLLOWUP = 'followup',
+    ONLINE_PRODUCT = 'onlineProduct',
 }
 export enum OperationalEventTypes {
     GET_FORM_DATA = 'GET_FORM_DATA',
@@ -332,7 +333,7 @@ export type DeleteMdPortalSubjectEvent = {
 export type CreateCustomerJourneyEvent = {
     type: MdPortalEventTypes.CREATE_CUSTOMER_JOURNEY
     vizoId: string
-    journeyType: 'product' | 'followup'
+    journeyType: 'product' | 'followup' | 'onlineProduct'
     ageGroup?: 'child' | 'adult'
     gender?: 'male' | 'female' | 'other'
     specificAgeGroup?: '7-12' | '12-18' | '18-30' | '30-50' | '50+'
