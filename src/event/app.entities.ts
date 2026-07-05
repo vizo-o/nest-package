@@ -252,8 +252,19 @@ export type SpecRecipeCreateData = {
 export type PropagateCustomizationDataEvent = {
     type: ClinicalEventTypes.PROPAGATE_CUSTOMIZATION_DATA
     vizoId: string
-    data: { sensoryModulationSensitivityGrade: string }
+    data: {
+        sensoryModulationSensitivityGrade?: string
+        sensoryModulationSensitivityScore?: number
+        adhdSymptomsGrade?: string
+        asrsInattentivenessScore?: number
+        asrsHyperactivityScore?: number
+        asrsTotalScore?: number
+    }
 }
+
+export type MarkerAlgoVersion = 'v2' | 'v3'
+
+export type CustomerChannel = 'Appointment' | 'Online'
 
 export type GetFinalSpecRecipesEvent = {
     type: ClinicalEventTypes.GET_FINAL_SPEC_RECIPES
@@ -264,7 +275,10 @@ export type GetFinalSpecRecipesEvent = {
         optometryPDRightFar: number
         dominantEye: string
         specType?: string
+        markerAlgoVersion?: MarkerAlgoVersion
+        customerChannel?: CustomerChannel
         optometryVertex?: number
+        specRole?: string
     }[]
 }
 
