@@ -17,6 +17,7 @@ export enum OperationalEventTypes {
     GET_CUSTOMER_COMMUNICATION_CHANNELS = 'GET_CUSTOMER_COMMUNICATION_CHANNELS',
     GET_CUSTOMER_UNMASKED_COMMUNICATION_CHANNEL = 'GET_CUSTOMER_UNMASKED_COMMUNICATION_CHANNEL',
     UPDATE_CUSTOMER_STATUS = 'UPDATE_CUSTOMER_STATUS',
+    UPDATE_CUSTOMER_OPTIC_FIELDS = 'UPDATE_CUSTOMER_OPTIC_FIELDS',
     GET_CUSTOMER_DATA = 'GET_CUSTOMER_DATA',
     PROPAGATE_FORM = 'PROPAGATE_FORM',
     SYNC_MONDAY_LEADS_AND_CUSTOMERS = 'SYNC_MONDAY_LEADS_AND_CUSTOMERS',
@@ -60,6 +61,13 @@ export type UpdateCustomerStatus = {
     asrsFormStatus?: string
     asrsFormType?: string
     followUpSurveyCompletionStatus?: string
+}
+
+export type UpdateCustomerOpticFields = {
+    type: OperationalEventTypes.UPDATE_CUSTOMER_OPTIC_FIELDS
+    vizoId: string
+    dominantEye: 'left' | 'right'
+    odi: number
 }
 
 export type GetCustomerData = {
@@ -211,6 +219,7 @@ type OperationalEventBase =
     | GetCustomerCommunicationChannels
     | GetCustomerUnmaskedCommunicationChannel
     | UpdateCustomerStatus
+    | UpdateCustomerOpticFields
     | GetCustomerData
     | PropagateFormEvent
     | SmsReceivedEvent
