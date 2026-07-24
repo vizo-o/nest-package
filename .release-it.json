@@ -3,7 +3,6 @@
         "before:init": ["npm run pre-release"]
     },
     "npm": {
-        "publish": true,
-        "tag": "online-process"
+        "publish": true
     }
 }
