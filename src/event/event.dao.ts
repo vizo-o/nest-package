@@ -36,7 +36,17 @@ export abstract class EventDaoBase {
 
     updateFileRecord(
         id: string,
-        { status, error }: { status: string; error?: string },
+        {
+            status,
+            error,
+            eTag,
+            bucket,
+        }: {
+            status: string
+            error?: string | null
+            eTag?: string
+            bucket?: string
+        },
     ) {
         return this.prisma.fileRecord.update({
             where: {
@@ -44,7 +54,9 @@ export abstract class EventDaoBase {
             },
             data: {
                 status,
-                error,
+                ...(error !== undefined && { error }),
+                ...(eTag !== undefined && { eTag }),
+                ...(bucket !== undefined && { bucket }),
             },
         })
     }

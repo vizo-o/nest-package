@@ -287,21 +287,21 @@ export abstract class EventServiceBase<
                     status: 'ignored',
                 })
             } catch (error) {
-                if ((error as { code: string }).code === 'P2002') {
+                if (isPrismaUniqueConstraintError(error)) {
                     const fileRecord = await this.dao.getFileRecordFromKey(key)
 
-                    return [{ fileStatus: fileRecord.status }]
+                    return [{ fileStatus: fileRecord?.status ?? 'ignored' }]
                 }
+                throw error
             }
 
             return [{ fileStatus: 'ignored' }]
         }
 
-        const fileRecord = await this.dao.createFileRecord({
+        const fileRecord = await this.createOrReusePendingFileRecord({
             key,
             eTag,
             bucket,
-            status: 'pending',
         })
 
         const fileHandlers = this.fileHandlerSubscriptions
@@ -374,6 +374,40 @@ export abstract class EventServiceBase<
         })
 
         throw new Error(`No file handlers for key ${event.s3.object.key}`)
+    }
+
+    private async createOrReusePendingFileRecord(input: {
+        key: string
+        eTag: string
+        bucket: string
+    }): Promise<{ id: string }> {
+        try {
+            return await this.dao.createFileRecord({
+                key: input.key,
+                eTag: input.eTag,
+                bucket: input.bucket,
+                status: 'pending',
+            })
+        } catch (error) {
+            if (!isPrismaUniqueConstraintError(error)) {
+                throw error
+            }
+
+            const existing = await this.dao.getFileRecordFromKey(input.key)
+            if (!existing) {
+                throw error
+            }
+
+            // Same S3 key re-uploaded (e.g. CI overwrite). Reset and reprocess.
+            await this.dao.updateFileRecord(existing.id, {
+                status: 'pending',
+                error: null,
+                eTag: input.eTag,
+                bucket: input.bucket,
+            })
+
+            return existing
+        }
     }
 
     protected preProcessEvent(event: unknown) {
@@ -451,4 +485,13 @@ export abstract class EventServiceBase<
 
         return event as Event
     }
+}
+
+function isPrismaUniqueConstraintError(error: unknown): boolean {
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code: unknown }).code === 'P2002'
+    )
 }
