@@ -1,3 +1,4 @@
+import { LoggerService } from '../logger-v2';
 import type { InputLogEvent } from '@aws-sdk/client-cloudwatch-logs'
 import {
     CloudWatchLogsClient,
@@ -52,7 +53,7 @@ import fs from 'fs'
 import * as crypto from 'node:crypto'
 import type { Readable } from 'stream'
 import type { Service } from '../event/app.entities'
-import type { LoggerService } from '../logger-v2'
+
 import { getTraceContextForDownstream } from '../trace'
 import { NotificationChannel } from './entities'
 import { notify } from './notify-inline'
