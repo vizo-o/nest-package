@@ -1,4 +1,4 @@
-import { LoggerService } from '../logger-v2';
+import type { LoggerService } from '../logger-v2';
 
 import type { InputLogEvent } from '@aws-sdk/client-cloudwatch-logs'
 import {
