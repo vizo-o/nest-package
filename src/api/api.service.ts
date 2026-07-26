@@ -556,6 +556,21 @@ export abstract class ApiServiceBase implements OnModuleInit {
         userEmail: string
         tokenPayload?: Record<string, unknown>
     }> {
+        const healthInternalPath = /\/health\/internal\/?$/i.test(event.path)
+        if (
+            healthInternalPath &&
+            process.env.ENABLE_HEALTH_SMOKE_BYPASS === 'true'
+        ) {
+            const requiredPermission = permissionGenerator(payload)
+            return {
+                requiredPermission,
+                userRoles: ['health_test'],
+                userEmail:
+                    process.env.HEALTH_SMOKE_TEST_USER_EMAIL ??
+                    'health-test@vizo-o.com',
+            }
+        }
+
         const customAuthEndpoint = this.customAuthEndpoints.find((endpoint) =>
             event.path.startsWith(endpoint.path),
         )
