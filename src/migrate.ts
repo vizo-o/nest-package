@@ -3,6 +3,7 @@ import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
 import { Signer } from '@aws-sdk/rds-signer'
 import { spawn } from 'child_process'
+import { writeFileSync } from 'fs'
 import yargs from 'yargs'
 import { reportError } from './aws'
 
@@ -199,6 +200,22 @@ const launchTask = async (task = 'migration') => {
     } else {
         console.log('Tasks: ', JSON.stringify(response.tasks))
     }
+
+    const taskArns = response.tasks
+        .map((t) => t.taskArn)
+        .filter((arn): arn is string => typeof arn === 'string' && arn.length > 0)
+    if (taskArns.length === 0) {
+        throw new Error('launchTask: No task ARNs in response')
+    }
+
+    const arnsFile =
+        process.env.MIGRATION_TASK_ARNS_FILE ?? '.migration-task-arns'
+    writeFileSync(arnsFile, [clusterArn, ...taskArns].join('\n') + '\n', {
+        encoding: 'utf-8',
+    })
+    console.log(
+        `Wrote ${taskArns.length} task ARN(s) to ${arnsFile} (cluster on line 1)`,
+    )
 
     console.log(`${repoName} migration task launched successfully`)
 }
