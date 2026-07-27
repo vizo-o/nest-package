@@ -417,17 +417,20 @@ export abstract class ApiServiceBase implements OnModuleInit {
 
             const methodOutput = await boundMethod(payload)
             const endTime = performance.now()
+            const skipAccessLog = this.isIamAuthorizedHealthInternal(event)
 
-            await this.dao.createAccessLog({
-                user: { connect: { email: userEmail } },
-                resource: authorizedRequiredPermission.resource,
-                action: authorizedRequiredPermission.action,
-                payload: JSON.stringify(payload),
-                path: event.path,
-                method: event.httpMethod,
-                statusCode: 200,
-                duration: math.round(endTime - startTime),
-            })
+            if (!skipAccessLog) {
+                await this.dao.createAccessLog({
+                    user: { connect: { email: userEmail } },
+                    resource: authorizedRequiredPermission.resource,
+                    action: authorizedRequiredPermission.action,
+                    payload: JSON.stringify(payload),
+                    path: event.path,
+                    method: event.httpMethod,
+                    statusCode: 200,
+                    duration: math.round(endTime - startTime),
+                })
+            }
 
             return {
                 statusCode: 200,
@@ -512,18 +515,21 @@ export abstract class ApiServiceBase implements OnModuleInit {
             const statusCode = err instanceof AppError ? err.status : 500
 
             const endTime = performance.now()
+            const skipAccessLog = this.isIamAuthorizedHealthInternal(event)
 
-            await this.dao.createAccessLog({
-                ...(userEmail && { user: { connect: { email: userEmail } } }),
-                resource: requiredPermission?.resource || 'unknown',
-                action: requiredPermission?.action || 'unknown',
-                payload: JSON.stringify(payload) || JSON.stringify({}),
-                path: event.path,
-                method: event.httpMethod,
-                statusCode,
-                error: errorString,
-                duration: Math.round(endTime - startTime),
-            })
+            if (!skipAccessLog) {
+                await this.dao.createAccessLog({
+                    ...(userEmail && { user: { connect: { email: userEmail } } }),
+                    resource: requiredPermission?.resource || 'unknown',
+                    action: requiredPermission?.action || 'unknown',
+                    payload: JSON.stringify(payload) || JSON.stringify({}),
+                    path: event.path,
+                    method: event.httpMethod,
+                    statusCode,
+                    error: errorString,
+                    duration: Math.round(endTime - startTime),
+                })
+            }
 
             return {
                 headers: this.addCorsHeaders(),
@@ -533,6 +539,20 @@ export abstract class ApiServiceBase implements OnModuleInit {
         }
     }
 
+    private isIamAuthorizedHealthInternal(event: {
+        path: string
+        requestContext?: {
+            identity?: {
+                userArn?: string | null
+            }
+        }
+    }): boolean {
+        return (
+            /\/health\/internal\/?$/i.test(event.path) &&
+            Boolean(event.requestContext?.identity?.userArn)
+        )
+    }
+
     private async authorizeRequest(
         event: {
             path: string
@@ -540,6 +560,7 @@ export abstract class ApiServiceBase implements OnModuleInit {
             requestContext?: {
                 identity?: {
                     sourceIp?: string
+                    userArn?: string | null
                 }
             }
         },
@@ -557,17 +578,12 @@ export abstract class ApiServiceBase implements OnModuleInit {
         tokenPayload?: Record<string, unknown>
     }> {
         const healthInternalPath = /\/health\/internal\/?$/i.test(event.path)
-        if (
-            healthInternalPath &&
-            process.env.ENABLE_HEALTH_SMOKE_BYPASS === 'true'
-        ) {
+        if (healthInternalPath && event.requestContext?.identity?.userArn) {
             const requiredPermission = permissionGenerator(payload)
             return {
                 requiredPermission,
-                userRoles: ['health_test'],
-                userEmail:
-                    process.env.HEALTH_SMOKE_TEST_USER_EMAIL ??
-                    'health-test@vizo-o.com',
+                userRoles: [],
+                userEmail: event.requestContext.identity.userArn,
             }
         }
 
