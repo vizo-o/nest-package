@@ -23,6 +23,14 @@ const argv = yargs
         choices: ['migrate', 'reset-db', 'invoke-migration'] as const,
         default: 'migrate',
     })
+    .option('gitSha', {
+        describe: 'Commit SHA (for migration runner payload)',
+        type: 'string',
+    })
+    .option('githubRunId', {
+        describe: 'GitHub Actions run id (for migration artifact)',
+        type: 'string',
+    })
     .parseSync()
 
 const { repoName } = argv
@@ -179,6 +187,33 @@ const invokeMigrationLambda = async () => {
         )
     }
 
+    const runId =
+        argv.githubRunId ??
+        process.env.GITHUB_RUN_ID ??
+        process.env.GITHUB_RUN_NUMBER
+    if (!runId) {
+        throw new Error(
+            'invokeMigrationLambda: missing githubRunId (or GITHUB_RUN_ID env)',
+        )
+    }
+
+    const gitSha = argv.gitSha ?? process.env.GITHUB_SHA
+    const repository =
+        process.env.GITHUB_REPOSITORY ?? `vizo-o/${repoName}`
+    const [githubOwner, githubRepo] = repository.includes('/')
+        ? (repository.split('/') as [string, string])
+        : ['vizo-o', repoName]
+
+    const payload = {
+        source: 'cicd-migrate' as const,
+        repoName,
+        runId: String(runId),
+        gitSha,
+        githubOwner,
+        githubRepo,
+        artifactName: 'migration-lambda-zip',
+    }
+
     console.log(`Invoking migration Lambda: ${functionName}`)
     const lambdaClient = new LambdaClient({})
     const maxAttempts = 36
@@ -191,9 +226,7 @@ const invokeMigrationLambda = async () => {
                     FunctionName: functionName,
                     InvocationType: 'RequestResponse',
                     LogType: 'Tail',
-                    Payload: Buffer.from(
-                        JSON.stringify({ source: 'cicd-migrate' }),
-                    ),
+                    Payload: Buffer.from(JSON.stringify(payload)),
                 }),
             )
             break
