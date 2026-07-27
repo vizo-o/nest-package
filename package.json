@@ -44,6 +44,10 @@
         "./trace": {
             "types": "./dist/src/trace/index.d.ts",
             "default": "./dist/src/trace/index.js"
+        },
+        "./lambda": {
+            "types": "./dist/src/lambda/index.d.ts",
+            "default": "./dist/src/lambda/index.js"
         }
     },
     "scripts": {
