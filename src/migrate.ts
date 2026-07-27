@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { ECSClient, RunTaskCommand } from '@aws-sdk/client-ecs'
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda'
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm'
 import { Signer } from '@aws-sdk/rds-signer'
 import { spawn } from 'child_process'
-import { writeFileSync } from 'fs'
 import yargs from 'yargs'
 import { reportError } from './aws'
 
@@ -21,7 +20,7 @@ const argv = yargs
         describe: 'Action to perform',
         demandOption: false,
         type: 'string',
-        options: ['migrate', 'launch-task'],
+        choices: ['migrate', 'reset-db', 'invoke-migration'] as const,
         default: 'migrate',
     })
     .parseSync()
@@ -64,10 +63,11 @@ const getDbUrl = async () => {
         return `postgres://${username}:${encodedToken}@${process.env.DB_HOST}:${
             process.env.DB_PORT
         }/${kebabToSnake(repoName)}?sslmode=require&sslcert=global-bundle.pem`
-    } else
-        return `postgresql://${username}:${username}@localhost:5432/${kebabToSnake(
-            repoName,
-        )}`
+    }
+
+    return `postgresql://${username}:${username}@localhost:5432/${kebabToSnake(
+        repoName,
+    )}`
 }
 
 const runTask = async (task = 'migration') => {
@@ -139,85 +139,100 @@ const runTask = async (task = 'migration') => {
     console.log(`${taskString} completed successfully.`)
 }
 
-const launchTask = async (task = 'migration') => {
-    console.log(`Launching ${task} task...`)
-
-    const taskDefinitionArn = await getSSMParameter(
-        `/${repoName}/migration-task-definition-arn`,
-    )
-    const securityGroupId = await getSSMParameter(
-        '/infra-db/db-security-group-id',
-    )
-    const privateSubnets = (
-        await getSSMParameter('/infra-base/vpc/private-subnets')
-    )?.split(',')
-    const clusterArn = await getSSMParameter(
-        '/infra-db/database-task-cluster-arn',
-    )
-    if (
-        !taskDefinitionArn ||
-        !securityGroupId ||
-        !privateSubnets ||
-        !clusterArn
-    ) {
-        throw new Error('launchTask: Missing required parameters')
+const decodeLambdaLogTail = (logResult: string | undefined) => {
+    if (!logResult) {
+        return
     }
+    try {
+        const decoded = Buffer.from(logResult, 'base64').toString('utf-8')
+        console.log('--- Migration Lambda logs ---')
+        console.log(decoded)
+        console.log('--- end Migration Lambda logs ---')
+    } catch {
+        console.log('Could not decode Lambda log tail')
+    }
+}
 
-    const ecsClient = new ECSClient({})
-    const runTaskCommand = new RunTaskCommand({
-        taskDefinition: taskDefinitionArn,
-        cluster: clusterArn,
-        launchType: 'FARGATE',
-        networkConfiguration: {
-            awsvpcConfiguration: {
-                subnets: privateSubnets,
-                securityGroups: [securityGroupId],
-            },
-        },
-        ...(task === 'reset-db-launch-task' && {
-            overrides: {
-                containerOverrides: [
-                    {
-                        name: repoName,
-                        command: ['npm run danger-reset-db'],
-                    },
-                ],
-            },
-        }),
+const sleep = (ms: number) =>
+    new Promise<void>((resolve) => {
+        setTimeout(resolve, ms)
     })
 
-    const response = await ecsClient.send(runTaskCommand)
-    if (response.failures && response.failures.length > 0) {
-        console.log('Failures: ', response.failures)
+const isMigrationLambdaBusy = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object' || !('name' in error)) {
+        return false
+    }
+    const name = String((error as { name: string }).name)
+    return (
+        name === 'TooManyRequestsException' ||
+        name === 'ConcurrentInvocationLimitExceeded'
+    )
+}
+
+const invokeMigrationLambda = async () => {
+    const functionName = await getSSMParameter(
+        `/${repoName}/migration-lambda-function-name`,
+    )
+    if (!functionName) {
         throw new Error(
-            `launchTask failures reported:\n\t${response.failures
-                .map((f) => f.reason)
-                .join('\n\t')}`,
+            `invokeMigrationLambda: missing SSM /${repoName}/migration-lambda-function-name`,
         )
     }
-    if (!response.tasks || response.tasks.length === 0) {
-        throw new Error('launchTask: No tasks returned')
-    } else {
-        console.log('Tasks: ', JSON.stringify(response.tasks))
+
+    console.log(`Invoking migration Lambda: ${functionName}`)
+    const lambdaClient = new LambdaClient({})
+    const maxAttempts = 36
+    let response
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            response = await lambdaClient.send(
+                new InvokeCommand({
+                    FunctionName: functionName,
+                    InvocationType: 'RequestResponse',
+                    LogType: 'Tail',
+                    Payload: Buffer.from(
+                        JSON.stringify({ source: 'cicd-migrate' }),
+                    ),
+                }),
+            )
+            break
+        } catch (error) {
+            if (isMigrationLambdaBusy(error) && attempt < maxAttempts) {
+                console.log(
+                    `Migration Lambda busy (reserved concurrency); retry ${attempt}/${maxAttempts} in 10s`,
+                )
+                await sleep(10_000)
+                continue
+            }
+            throw error
+        }
     }
 
-    const taskArns = response.tasks
-        .map((t) => t.taskArn)
-        .filter((arn): arn is string => typeof arn === 'string' && arn.length > 0)
-    if (taskArns.length === 0) {
-        throw new Error('launchTask: No task ARNs in response')
+    if (!response) {
+        throw new Error(
+            'Migration Lambda invoke did not return a response after retries',
+        )
     }
 
-    const arnsFile =
-        process.env.MIGRATION_TASK_ARNS_FILE ?? '.migration-task-arns'
-    writeFileSync(arnsFile, [clusterArn, ...taskArns].join('\n') + '\n', {
-        encoding: 'utf-8',
-    })
-    console.log(
-        `Wrote ${taskArns.length} task ARN(s) to ${arnsFile} (cluster on line 1)`,
-    )
+    decodeLambdaLogTail(response.LogResult)
 
-    console.log(`${repoName} migration task launched successfully`)
+    if (response.FunctionError) {
+        const payloadText = response.Payload
+            ? Buffer.from(response.Payload).toString('utf-8')
+            : ''
+        throw new Error(
+            `Migration Lambda failed (${response.FunctionError}): ${payloadText}`,
+        )
+    }
+
+    if (response.StatusCode !== 200) {
+        throw new Error(
+            `Migration Lambda invoke returned status ${response.StatusCode}`,
+        )
+    }
+
+    console.log(`${repoName} migration Lambda completed successfully`)
 }
 
 const bootstrap = async () => {
@@ -226,16 +241,14 @@ const bootstrap = async () => {
             await runTask()
         } else if (argv.action === 'reset-db') {
             await runTask('reset-db')
-        } else if (argv.action === 'launch-task') {
-            await launchTask()
-        } else if (argv.action === 'reset-db-launch-task') {
-            await launchTask('reset-db-launch-task')
+        } else if (argv.action === 'invoke-migration') {
+            await invokeMigrationLambda()
         }
     } catch (error) {
         console.error('Error: ', error)
         await reportError(error, {
             category: 'infrastructure',
-            title: `Migration task failed for ${repoName}`,
+            title: `Migration failed for ${repoName}`,
             description: `Failed to execute ${argv.action} action`,
         })
         process.exit(1)
