@@ -10,6 +10,33 @@ import { EventBaseTypes, createScheduleEventKey } from './entities'
 export const EVENT_HANDLER_METADATA_KEY = Symbol('EVENT_HANDLER_METADATA_KEY')
 export const EventRegistry = new Set<string>()
 
+const ScheduleEnabledEnvsRegistry = new Map<string, string[]>()
+
+const normalizeEnabledEnvs = (
+    enabledEnvs?: string | string[],
+): string[] | undefined => {
+    if (!enabledEnvs) {
+        return undefined
+    }
+
+    return Array.isArray(enabledEnvs) ? enabledEnvs : [enabledEnvs]
+}
+
+export const getCurrentScheduleEnv = (): string =>
+    process.env.ENV || process.env.NODE_ENV || 'unknown'
+
+export const isScheduleEnabledForEnv = (
+    eventKey: string,
+    env: string = getCurrentScheduleEnv(),
+): boolean => {
+    const enabledEnvs = ScheduleEnabledEnvsRegistry.get(eventKey)
+    if (!enabledEnvs) {
+        return true
+    }
+
+    return enabledEnvs.includes(env)
+}
+
 export function EventHandler(): ClassDecorator {
     return (target) => {
         if (typeof target !== 'function') {
@@ -62,20 +89,11 @@ export function Schedule(
         )
     }
 
-    if (options?.enabledEnvs) {
-        // Use fallback to avoid fatal errors - if ENV is not set, assume not enabled
-        const currentEnv = process.env.ENV || process.env.NODE_ENV || 'unknown'
-        const enabledEnvs = Array.isArray(options.enabledEnvs)
-            ? options.enabledEnvs
-            : [options.enabledEnvs]
-        if (!enabledEnvs.includes(currentEnv)) {
-            // Return no-op decorator when event is disabled in current environment
-            // eslint-disable-next-line no-empty-function
-            return () => {}
-        }
-    }
-
     const event = createScheduleEventKey(cronString)
+    const enabledEnvs = normalizeEnabledEnvs(options?.enabledEnvs)
+    if (enabledEnvs !== undefined) {
+        ScheduleEnabledEnvsRegistry.set(event, enabledEnvs)
+    }
 
     return function (
         target: object,

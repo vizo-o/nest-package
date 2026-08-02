@@ -22,7 +22,11 @@ import {
     isSnsEvent,
 } from './entities'
 import type { EventDaoBase } from './event.dao'
-import { EVENT_HANDLER_METADATA_KEY, EventRegistry } from './event.decorator'
+import {
+    EVENT_HANDLER_METADATA_KEY,
+    EventRegistry,
+    isScheduleEnabledForEnv,
+} from './event.decorator'
 
 /**
  * Simple logger interface for EventServiceBase
@@ -145,6 +149,13 @@ export abstract class EventServiceBase<
     ) {
         for (const eventType of EventRegistry) {
             if (eventType !== EventBaseTypes.FILE_UPLOADED) {
+                if (
+                    eventType.startsWith('schedule') &&
+                    !isScheduleEnabledForEnv(eventType)
+                ) {
+                    continue
+                }
+
                 const eventHandlers = Reflect.getMetadata(
                     eventType,
                     prototype,
@@ -189,8 +200,9 @@ export abstract class EventServiceBase<
     }
 
     getScheduleCrons() {
-        return Array.from(EventRegistry).filter((key) =>
-            key.startsWith('schedule'),
+        return Array.from(EventRegistry).filter(
+            (key) =>
+                key.startsWith('schedule') && isScheduleEnabledForEnv(key),
         )
     }
 
