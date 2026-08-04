@@ -25,6 +25,8 @@ import type { EventDaoBase } from './event.dao'
 import {
     EVENT_HANDLER_METADATA_KEY,
     EventRegistry,
+    SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY,
+    isHandlerEnabledForEnv,
     isScheduleEnabledForEnv,
 } from './event.decorator'
 
@@ -149,23 +151,36 @@ export abstract class EventServiceBase<
     ) {
         for (const eventType of EventRegistry) {
             if (eventType !== EventBaseTypes.FILE_UPLOADED) {
-                if (
-                    eventType.startsWith('schedule') &&
-                    !isScheduleEnabledForEnv(eventType)
-                ) {
-                    continue
-                }
-
                 const eventHandlers = Reflect.getMetadata(
                     eventType,
                     prototype,
                     methodName,
                 ) as Array<(event: Event) => Promise<EventResponse>>
+                const scheduleHandlerEnabledEnvs = eventType.startsWith(
+                    'schedule',
+                )
+                    ? (Reflect.getMetadata(
+                          SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY,
+                          prototype,
+                          methodName,
+                      ) as Array<string[] | undefined> | undefined)
+                    : undefined
+
                 if (eventHandlers) {
-                    eventHandlers.forEach((eventHandler) => {
+                    eventHandlers.forEach((eventHandler, handlerIndex) => {
                         if (typeof eventHandler !== 'function') {
                             throw new Error('Event handler must be a function')
                         }
+
+                        if (
+                            eventType.startsWith('schedule') &&
+                            !isHandlerEnabledForEnv(
+                                scheduleHandlerEnabledEnvs?.[handlerIndex],
+                            )
+                        ) {
+                            return
+                        }
+
                         if (!this.eventSubscriptions[eventType]) {
                             this.eventSubscriptions[eventType] = []
                         }
@@ -201,8 +216,7 @@ export abstract class EventServiceBase<
 
     getScheduleCrons() {
         return Array.from(EventRegistry).filter(
-            (key) =>
-                key.startsWith('schedule') && isScheduleEnabledForEnv(key),
+            (key) => key.startsWith('schedule') && isScheduleEnabledForEnv(key),
         )
     }
 

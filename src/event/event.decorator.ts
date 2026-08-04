@@ -8,9 +8,17 @@ import type {
 import { EventBaseTypes, createScheduleEventKey } from './entities'
 
 export const EVENT_HANDLER_METADATA_KEY = Symbol('EVENT_HANDLER_METADATA_KEY')
+export const SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY = Symbol(
+    'SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY',
+)
 export const EventRegistry = new Set<string>()
 
-const ScheduleEnabledEnvsRegistry = new Map<string, string[]>()
+type ScheduleHandlerRegistration = {
+    eventKey: string
+    enabledEnvs?: string[]
+}
+
+const ScheduleHandlerRegistry: ScheduleHandlerRegistration[] = []
 
 const normalizeEnabledEnvs = (
     enabledEnvs?: string | string[],
@@ -25,16 +33,26 @@ const normalizeEnabledEnvs = (
 export const getCurrentScheduleEnv = (): string =>
     process.env.ENV || process.env.NODE_ENV || 'unknown'
 
-export const isScheduleEnabledForEnv = (
-    eventKey: string,
+export const isHandlerEnabledForEnv = (
+    enabledEnvs?: string[],
     env: string = getCurrentScheduleEnv(),
 ): boolean => {
-    const enabledEnvs = ScheduleEnabledEnvsRegistry.get(eventKey)
     if (!enabledEnvs) {
         return true
     }
 
     return enabledEnvs.includes(env)
+}
+
+export const isScheduleEnabledForEnv = (
+    eventKey: string,
+    env: string = getCurrentScheduleEnv(),
+): boolean => {
+    return ScheduleHandlerRegistry.some(
+        (registration) =>
+            registration.eventKey === eventKey &&
+            isHandlerEnabledForEnv(registration.enabledEnvs, env),
+    )
 }
 
 export function EventHandler(): ClassDecorator {
@@ -91,21 +109,34 @@ export function Schedule(
 
     const event = createScheduleEventKey(cronString)
     const enabledEnvs = normalizeEnabledEnvs(options?.enabledEnvs)
-    if (enabledEnvs !== undefined) {
-        ScheduleEnabledEnvsRegistry.set(event, enabledEnvs)
-    }
 
     return function (
         target: object,
         key: string | symbol,
         descriptor: TypedPropertyDescriptor<() => Promise<EventResponse>>,
     ) {
+        ScheduleHandlerRegistry.push({ eventKey: event, enabledEnvs })
+
         Reflect.defineMetadata(
             event,
             [
                 ...(Reflect.getMetadata(event, target[key as keyof object]) ??
                     []),
                 descriptor.value,
+            ],
+            target,
+            key,
+        )
+
+        Reflect.defineMetadata(
+            SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY,
+            [
+                ...(Reflect.getMetadata(
+                    SCHEDULE_HANDLER_ENABLED_ENVS_METADATA_KEY,
+                    target,
+                    key,
+                ) ?? []),
+                enabledEnvs,
             ],
             target,
             key,
