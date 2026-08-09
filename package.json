@@ -137,6 +137,7 @@
         "undici": ">=7.29.0 <8.0.0",
         "path-to-regexp": ">=8.4.0",
         "tmp": ">=0.2.7",
-        "protobufjs": ">=7.6.3"
+        "protobufjs": ">=7.6.3",
+        "js-yaml": ">=5.2.2"
     }
 }
