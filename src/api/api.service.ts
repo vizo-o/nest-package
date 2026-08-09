@@ -28,6 +28,7 @@ import {
     AuthorizationError,
     HttpMethod,
     NotFoundError,
+    isApiResponse,
     isCognitoTriggerEvent,
 } from './entities'
 import {
@@ -432,6 +433,13 @@ export abstract class ApiServiceBase implements OnModuleInit {
                 })
             }
 
+            if (isApiResponse(methodOutput)) {
+                return {
+                    ...methodOutput,
+                    headers: this.addCorsHeaders(methodOutput.headers ?? {}),
+                }
+            }
+
             return {
                 statusCode: 200,
                 body: JSON.stringify(methodOutput),
@@ -519,7 +527,9 @@ export abstract class ApiServiceBase implements OnModuleInit {
 
             if (!skipAccessLog) {
                 await this.dao.createAccessLog({
-                    ...(userEmail && { user: { connect: { email: userEmail } } }),
+                    ...(userEmail && {
+                        user: { connect: { email: userEmail } },
+                    }),
                     resource: requiredPermission?.resource || 'unknown',
                     action: requiredPermission?.action || 'unknown',
                     payload: JSON.stringify(payload) || JSON.stringify({}),
