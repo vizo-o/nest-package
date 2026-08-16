@@ -282,7 +282,7 @@ export type GetFinalSpecRecipesEvent = {
         finalModel: string
         optometryPDLeftFar: number
         optometryPDRightFar: number
-        dominantEye: string
+        dominantEye?: string
         specType?: string
         markerAlgoVersion?: MarkerAlgoVersion
         customerChannel?: CustomerChannel
@@ -485,8 +485,4 @@ export type AdminEventBase =
 export type AdminEvent = EventBase | AdminEventBase
 
 export type Event =
-    | OperationalEvent
-    | ClinicalEvent
-    | FormsEvent
-    | MdPortalEvent
-    | AdminEvent
+    OperationalEvent | ClinicalEvent | FormsEvent | MdPortalEvent | AdminEvent
