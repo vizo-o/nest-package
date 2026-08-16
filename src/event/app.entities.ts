@@ -271,7 +271,7 @@ export type GetFinalSpecRecipesEvent = {
         finalModel: string
         optometryPDLeftFar: number
         optometryPDRightFar: number
-        dominantEye: string
+        dominantEye?: string
         specType?: string
         optometryVertex?: number
     }[]
