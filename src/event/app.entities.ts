@@ -312,6 +312,8 @@ export enum MdPortalEventTypes {
     PROCESS_PDF_FILES_MISSING_PAGES = 'PROCESS_PDF_FILES_MISSING_PAGES',
     DELETE_SUBJECT = 'DELETE_SUBJECT',
     CREATE_CUSTOMER_JOURNEY = 'CREATE_CUSTOMER_JOURNEY',
+    GET_DUE_REVISION_CUSTOMER_SENDS = 'GET_DUE_REVISION_CUSTOMER_SENDS',
+    MARK_REVISION_CUSTOMER_SEND = 'MARK_REVISION_CUSTOMER_SEND',
 }
 
 export type StopApplicationEvent = {
@@ -350,6 +352,29 @@ export type CreateCustomerJourneyEvent = {
     includeClinicalForms?: boolean
 }
 
+export type RevisionCustomerSendKind = 'notice' | 'reminder'
+
+export type GetDueRevisionCustomerSendsEvent = {
+    type: MdPortalEventTypes.GET_DUE_REVISION_CUSTOMER_SENDS
+}
+
+export type MarkRevisionCustomerSendEvent = {
+    type: MdPortalEventTypes.MARK_REVISION_CUSTOMER_SEND
+    kind: RevisionCustomerSendKind
+    revisionId: string
+}
+
+export type DueRevisionCustomerSend = {
+    kind: RevisionCustomerSendKind
+    revisionId: string
+    applicationId: string
+    vizoId: string
+}
+
+export type GetDueRevisionCustomerSendsData = {
+    sends: DueRevisionCustomerSend[]
+}
+
 export type MdPortalEventBase =
     | StopApplicationEvent
     | SendMonthlyDoctorAssignmentReportEvent
@@ -357,6 +382,8 @@ export type MdPortalEventBase =
     | ProcessPdfFilesMissingPagesEvent
     | DeleteMdPortalSubjectEvent
     | CreateCustomerJourneyEvent
+    | GetDueRevisionCustomerSendsEvent
+    | MarkRevisionCustomerSendEvent
 export type MdPortalEvent = EventBase | MdPortalEventBase
 
 export enum AdminEventTypes {
@@ -471,8 +498,4 @@ export type AdminEventBase =
 export type AdminEvent = EventBase | AdminEventBase
 
 export type Event =
-    | OperationalEvent
-    | ClinicalEvent
-    | FormsEvent
-    | MdPortalEvent
-    | AdminEvent
+    OperationalEvent | ClinicalEvent | FormsEvent | MdPortalEvent | AdminEvent
