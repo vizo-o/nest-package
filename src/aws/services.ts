@@ -1,4 +1,5 @@
-import type { LoggerService } from '../logger-v2';
+import { getErrorMessage } from '../api/error.helpers'
+import type { LoggerService } from '../logger-v2'
 
 import type { InputLogEvent } from '@aws-sdk/client-cloudwatch-logs'
 import {
@@ -497,6 +498,10 @@ export class EcsService {
     }
 }
 
+/** Keeps only the last 4 digits, for logs and alerts. */
+const maskPhoneNumber = (phone: string): string =>
+    `***${phone.replace(/\D/g, '').slice(-4)}`
+
 @Injectable()
 export class SmsService {
     private readonly client = new PinpointSMSVoiceV2Client({})
@@ -536,19 +541,26 @@ export class SmsService {
                 }),
             )
         } catch (error) {
-            console.error('Error sending SMS:', error)
+            const maskedDestination = maskPhoneNumber(destinationNumber)
+            const safeError = new Error(
+                getErrorMessage(error)
+                    .split(destinationNumber)
+                    .join(maskedDestination),
+            )
+            safeError.name = error instanceof Error ? error.name : 'Error'
+            console.error('Error sending SMS:', safeError.message)
             const errorContext: ErrorContext = {
                 service: process.env.APP_NAME,
                 title: 'SMS sending failed',
-                description: `Failed to send SMS to ${destinationNumber} from ${originationPhoneNumber}`,
+                description: `Failed to send SMS to ${maskedDestination} from ${originationPhoneNumber}`,
                 severity: 'high',
                 category: 'external_service',
                 metadata: {
-                    destinationNumber,
+                    destinationNumber: maskedDestination,
                     originationPhoneNumber,
                 },
             }
-            await reportError(error, errorContext)
+            await reportError(safeError, errorContext)
             throw error
         }
     }

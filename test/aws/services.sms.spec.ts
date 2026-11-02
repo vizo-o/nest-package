@@ -73,6 +73,35 @@ describe('SmsService Error Reporting', () => {
             expect(mockNotifyFn).not.toHaveBeenCalled()
         })
 
+        it('should mask the customer number in failure logs and alerts', async () => {
+            process.env.ENV = 'prod'
+            const consoleError = jest
+                .spyOn(console, 'error')
+                .mockImplementation(() => undefined)
+            mockSend.mockRejectedValue(
+                new Error('Rejected for +1234567890 by carrier'),
+            )
+
+            await expect(
+                service.send({
+                    destinationNumber: '+1234567890',
+                    message: 'Test message',
+                    originationPhoneNumber: '+0987654321',
+                }),
+            ).rejects.toThrow()
+
+            const logged = JSON.stringify(consoleError.mock.calls)
+            const context = mockReportError.mock.calls[0][1]
+            const getReportedMessage = () =>
+                (mockReportError.mock.calls[0][0] as Error).message
+            expect(logged).not.toContain('+1234567890')
+            expect(logged).toContain('***7890')
+            expect(context?.description).toContain('***7890')
+            expect(JSON.stringify(context)).not.toContain('+1234567890')
+            expect(getReportedMessage()).not.toContain('+1234567890')
+            consoleError.mockRestore()
+        })
+
         it('should use notify() in non-prod environments (not an error, just skipping SMS)', async () => {
             // In non-prod, SMS is skipped - this is NOT an error, so notify() is correct
             process.env.ENV = 'dev'
@@ -106,7 +135,7 @@ describe('SmsService Error Reporting', () => {
     })
 
     describe('error context includes destination and origination numbers', () => {
-        it('should include destination number in error context', async () => {
+        it('should include the masked destination number in error context', async () => {
             process.env.ENV = 'prod'
             const error = new Error('SMS sending failed')
             mockSend.mockRejectedValue(error)
@@ -123,9 +152,7 @@ describe('SmsService Error Reporting', () => {
             const callArgs = mockReportError.mock.calls[0]
             const errorContext = callArgs[1]
 
-            expect(errorContext?.metadata?.destinationNumber).toBe(
-                '+1234567890',
-            )
+            expect(errorContext?.metadata?.destinationNumber).toBe('***7890')
             expect(errorContext?.metadata?.originationPhoneNumber).toBe(
                 '+0987654321',
             )
