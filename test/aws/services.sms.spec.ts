@@ -55,6 +55,32 @@ describe('SmsService Error Reporting', () => {
         service = new SmsService()
     })
 
+    describe('non-prod send', () => {
+        it('masks the number and keeps the message text in the log and admin email', async () => {
+            process.env.ENV = 'dev'
+            const logSpy = jest.spyOn(console, 'log').mockImplementation()
+
+            await service.send({
+                destinationNumber: '+972501234567',
+                message: 'Your code is 123456',
+                originationPhoneNumber: '+0987654321',
+            })
+
+            expect(mockSend).not.toHaveBeenCalled()
+            const expected =
+                'SMS not sent in non prod env, ***4567:\nYour code is 123456'
+            expect(logSpy).toHaveBeenCalledWith(expected)
+            expect(mockNotifyFn).toHaveBeenCalledWith(
+                expect.objectContaining({ message: expected }),
+            )
+            expect(JSON.stringify(mockNotifyFn.mock.calls)).not.toContain(
+                '972501234567',
+            )
+
+            logSpy.mockRestore()
+        })
+    })
+
     describe('SMS error notification uses reportError()', () => {
         it('should call reportError() when SMS sending fails in prod', async () => {
             process.env.ENV = 'prod'

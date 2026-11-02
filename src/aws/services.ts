@@ -515,7 +515,7 @@ export class SmsService {
         originationPhoneNumber: string
     }) {
         if (process.env.ENV !== 'prod') {
-            const adminMessage = `SMS not sent in non prod env, ${destinationNumber}:\n${message}`
+            const adminMessage = `SMS not sent in non prod env, ${maskPhoneNumber(destinationNumber)}:\n${message}`
             console.log(adminMessage)
             await notify({
                 notificationChannels: [NotificationChannel.ADMIN],
