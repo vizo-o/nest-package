@@ -624,16 +624,15 @@ describe('ApiServiceBase Error Handling', () => {
         })
 
         it('hides authenticating headers in payloadInfo, whatever the casing', async () => {
-            const event = createTestApiEvent({
-                headers: {
-                    'x-funnel-ops-token': 'fake-ops-token',
-                    'X-Api-Key': 'fake-api-key',
-                    authorization: 'Bearer fake-jwt',
-                    Accept: '*/*',
-                },
-            })
+            const headers = {
+                'x-funnel-ops-token': 'fake-ops-token',
+                'X-Api-Key': 'fake-api-key',
+                authorization: 'Bearer fake-jwt',
+                Accept: '*/*',
+            }
+            const event = createTestApiEvent({ headers })
             service.buildEventDispatcher = jest.fn().mockReturnValue({
-                payload: { headers: event.headers },
+                payload: { headers },
             })
 
             await service.handleEvent(event)
