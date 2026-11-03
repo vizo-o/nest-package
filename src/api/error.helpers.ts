@@ -87,6 +87,9 @@ export function formatRequestDetails(
     }
 }
 
+const SENSITIVE_HEADER =
+    /authorization|cookie|token|secret|password|api[-_]?key|signature|credential/i
+
 export function formatPayload(payload: RequestPayload | null): string {
     if (!payload) return 'No payload'
 
@@ -108,20 +111,11 @@ export function formatPayload(payload: RequestPayload | null): string {
             delete cleanPayload.headers['X-Amzn-Trace-Id']
             delete cleanPayload.headers['X-Amz-Cf-Id']
 
-            // Redact Authorization header (JWT tokens)
-            if (cleanPayload.headers['Authorization']) {
-                cleanPayload.headers['Authorization'] = '[REDACTED]'
-            }
-            if (cleanPayload.headers['authorization']) {
-                cleanPayload.headers['authorization'] = '[REDACTED]'
-            }
-
-            // Redact Cookie header
-            if (cleanPayload.headers['Cookie']) {
-                cleanPayload.headers['Cookie'] = '[REDACTED]'
-            }
-            if (cleanPayload.headers['cookie']) {
-                cleanPayload.headers['cookie'] = '[REDACTED]'
+            // Redact anything that authenticates the caller, whatever its casing
+            for (const name of Object.keys(cleanPayload.headers)) {
+                if (SENSITIVE_HEADER.test(name)) {
+                    cleanPayload.headers[name] = '[REDACTED]'
+                }
             }
 
             // Truncate User-Agent for readability

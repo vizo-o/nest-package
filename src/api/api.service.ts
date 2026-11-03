@@ -475,7 +475,7 @@ export abstract class ApiServiceBase implements OnModuleInit {
             const requestDetails = formatRequestDetails(
                 userEmail || 'Unknown user',
                 requiredPermission,
-                payload,
+                this.payloadForErrorReport(payload, event.path),
                 event,
             )
 
@@ -547,6 +547,17 @@ export abstract class ApiServiceBase implements OnModuleInit {
                 body: JSON.stringify({ error: errorString }),
             }
         }
+    }
+
+    /**
+     * What an error report may show of a request. Reports reach the admin
+     * system and alert emails; override to hide more for sensitive routes.
+     */
+    protected payloadForErrorReport(
+        payload: RequestPayload | null,
+        _path: string,
+    ): RequestPayload | null {
+        return payload
     }
 
     private isIamAuthorizedHealthInternal(event: {
