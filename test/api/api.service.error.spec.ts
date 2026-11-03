@@ -623,6 +623,53 @@ describe('ApiServiceBase Error Handling', () => {
             expect(errorContext?.metadata?.permissionInfo).toBeDefined()
         })
 
+        it('hides authenticating headers in payloadInfo, whatever the casing', async () => {
+            const headers = {
+                'x-funnel-ops-token': 'fake-ops-token',
+                'X-Api-Key': 'fake-api-key',
+                authorization: 'Bearer fake-jwt',
+                Accept: '*/*',
+            }
+            const event = createTestApiEvent({ headers })
+            service.buildEventDispatcher = jest.fn().mockReturnValue({
+                payload: { headers },
+            })
+
+            await service.handleEvent(event)
+
+            const payloadInfo = mockReportError.mock.calls[0][1]?.metadata
+                ?.payloadInfo as string
+            expect(payloadInfo).toContain('x-funnel-ops-token')
+            expect(payloadInfo).toContain('*/*')
+            expect(payloadInfo).not.toContain('fake-ops-token')
+            expect(payloadInfo).not.toContain('fake-api-key')
+            expect(payloadInfo).not.toContain('fake-jwt')
+        })
+
+        it('lets a service hide more of the report through payloadForErrorReport', async () => {
+            class HidingService extends TestApiService {
+                protected payloadForErrorReport() {
+                    return {
+                        headers: {},
+                        body: { phone: '[hidden]' },
+                        userEmail: '',
+                        userRoles: [],
+                    }
+                }
+            }
+            const hiding = new HidingService(mockLogger)
+            hiding.buildEventDispatcher = jest.fn().mockReturnValue({
+                payload: { headers: {}, body: { phone: 'fake-phone' } },
+            })
+
+            await hiding.handleEvent(createTestApiEvent())
+
+            const payloadInfo = mockReportError.mock.calls[0][1]?.metadata
+                ?.payloadInfo as string
+            expect(payloadInfo).toContain('[hidden]')
+            expect(payloadInfo).not.toContain('fake-phone')
+        })
+
         it('should include locationInfo in metadata', async () => {
             const event = createTestApiEvent({
                 headers: {
