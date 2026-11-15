@@ -566,7 +566,7 @@ export class SmsService {
     }
 }
 
-interface SendEmailParams {
+export interface SendEmailParams {
     to: string[]
     from: string
     subject: string
@@ -590,6 +590,18 @@ export class BlockedEmailError extends Error {
 
 interface EmailStatus {
     status: 'ACTIVE' | 'BOUNCED' | 'COMPLAINED'
+}
+
+/**
+ * What `SesService.sendEmail` did. `sent` is true only when SES accepted the
+ * message for at least one recipient; `skipped` lists the recipients that were
+ * left out because of their email status (bounced, complained, or any other
+ * non-active status), so a caller can tell "sent" from "silently skipped".
+ */
+export interface SendEmailResult {
+    sent: boolean
+    recipients: string[]
+    skipped: { email: string; status: string }[]
 }
 
 @Injectable()
@@ -653,7 +665,7 @@ export class SesService {
         textBody,
         configurationSetName,
         silentDropBlockedRecipients = false,
-    }: SendEmailParams) {
+    }: SendEmailParams): Promise<SendEmailResult> {
         let finalFrom = from
         await this.initializeParams()
 
@@ -678,6 +690,13 @@ export class SesService {
         const validRecipients = emailStatuses
             .filter(({ status }) => status.status === 'ACTIVE')
             .map(({ email }) => email)
+
+        const skipped = emailStatuses
+            .filter(({ status }) => status.status !== 'ACTIVE')
+            .map(({ email, status }) => ({
+                email,
+                status: String(status.status),
+            }))
 
         // Handle blocked recipients
         if (blockedEmails.bounce.length > 0) {
@@ -706,7 +725,7 @@ export class SesService {
                 'No valid recipients after filtering bounced/complained emails',
             )
 
-            return
+            return { sent: false, recipients: [], skipped }
         }
 
         // In non-prod environments, route all emails to dev@vizo-o.com
@@ -754,6 +773,8 @@ export class SesService {
             console.log(
                 `Email sent successfully to ${validRecipients.join(', ')}`,
             )
+
+            return { sent: true, recipients: validRecipients, skipped }
         } catch (error) {
             console.error('Error sending email:', error)
             throw error
