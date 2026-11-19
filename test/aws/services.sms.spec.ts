@@ -31,14 +31,6 @@ jest.mock('../../src/aws/notify-inline', () => ({
     },
 }))
 
-// Mock notify
-jest.mock('../../src/aws/notify-inline', () => ({
-    notify: jest.fn(),
-    NotificationChannel: {
-        ADMIN: 'ADMIN',
-    },
-}))
-
 const mockReportError = reportError as jest.MockedFunction<typeof reportError>
 const { notify } = require('../../src/aws/notify-inline')
 const mockNotifyFn = notify as jest.MockedFunction<typeof notify>
@@ -56,7 +48,7 @@ describe('SmsService Error Reporting', () => {
     })
 
     describe('non-prod send', () => {
-        it('masks the number and keeps the message text in the log and admin email', async () => {
+        it('logs a structured line with the masked number and template key and sends no email or alert', async () => {
             process.env.ENV = 'dev'
             const logSpy = jest.spyOn(console, 'log').mockImplementation()
 
@@ -64,16 +56,21 @@ describe('SmsService Error Reporting', () => {
                 destinationNumber: '+972501234567',
                 message: 'Your code is 123456',
                 originationPhoneNumber: '+0987654321',
+                templateKey: 'otp',
             })
 
             expect(mockSend).not.toHaveBeenCalled()
-            const expected =
-                'SMS not sent in non prod env, ***4567:\nYour code is 123456'
-            expect(logSpy).toHaveBeenCalledWith(expected)
-            expect(mockNotifyFn).toHaveBeenCalledWith(
-                expect.objectContaining({ message: expected }),
-            )
-            expect(JSON.stringify(mockNotifyFn.mock.calls)).not.toContain(
+            expect(mockNotifyFn).not.toHaveBeenCalled()
+            expect(mockReportError).not.toHaveBeenCalled()
+            expect(logSpy).toHaveBeenCalledTimes(1)
+            const logged = JSON.parse(logSpy.mock.calls[0][0] as string)
+            expect(logged).toMatchObject({
+                event: 'sms_skipped_non_prod',
+                env: 'dev',
+                destination: '***4567',
+                templateKey: 'otp',
+            })
+            expect(JSON.stringify(logSpy.mock.calls)).not.toContain(
                 '972501234567',
             )
 
@@ -126,22 +123,6 @@ describe('SmsService Error Reporting', () => {
             expect(JSON.stringify(context)).not.toContain('+1234567890')
             expect(getReportedMessage()).not.toContain('+1234567890')
             consoleError.mockRestore()
-        })
-
-        it('should use notify() in non-prod environments (not an error, just skipping SMS)', async () => {
-            // In non-prod, SMS is skipped - this is NOT an error, so notify() is correct
-            process.env.ENV = 'dev'
-
-            await service.send({
-                destinationNumber: '+1234567890',
-                message: 'Test message',
-                originationPhoneNumber: '+0987654321',
-            })
-
-            // Non-prod uses notify() for informational message, not reportError()
-            expect(mockNotifyFn).toHaveBeenCalled()
-            expect(mockReportError).not.toHaveBeenCalled()
-            expect(mockSend).not.toHaveBeenCalled()
         })
 
         it('should NOT call reportError() when SMS sending succeeds', async () => {

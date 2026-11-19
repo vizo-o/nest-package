@@ -57,8 +57,6 @@ import type { Readable } from 'stream'
 import type { Service } from '../event/app.entities'
 
 import { getTraceContextForDownstream } from '../trace'
-import { NotificationChannel } from './entities'
-import { notify } from './notify-inline'
 import { reportError, type ErrorContext } from './report-error'
 
 const DEFAULT_PRESIGNED_URL_EXPIRATION_SECONDS = 30
@@ -509,19 +507,26 @@ export class SmsService {
         destinationNumber,
         message,
         originationPhoneNumber,
+        templateKey,
     }: {
         destinationNumber: string
         message: string
         originationPhoneNumber: string
+        /** Optional template/flow name, logged when the SMS is skipped outside prod. */
+        templateKey?: string
     }) {
         if (process.env.ENV !== 'prod') {
-            const adminMessage = `SMS not sent in non prod env, ${maskPhoneNumber(destinationNumber)}:\n${message}`
-            console.log(adminMessage)
-            await notify({
-                notificationChannels: [NotificationChannel.ADMIN],
-                subject: `${process.env?.ENV?.toUpperCase()} SMS not sent in non prod env`,
-                message: adminMessage,
-            })
+            // Outside prod the SMS is skipped and only logged: no email or alert to anyone.
+            console.log(
+                JSON.stringify({
+                    event: 'sms_skipped_non_prod',
+                    env: process.env.ENV,
+                    service: process.env.APP_NAME,
+                    destination: maskPhoneNumber(destinationNumber),
+                    templateKey: templateKey ?? null,
+                    message,
+                }),
+            )
 
             return
         }
