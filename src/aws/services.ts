@@ -58,6 +58,7 @@ import type { Service } from '../event/app.entities'
 
 import { getTraceContextForDownstream } from '../trace'
 import { reportError, type ErrorContext } from './report-error'
+import { maskEmail, routeRecipientsForEnv } from './ses-recipients'
 
 const DEFAULT_PRESIGNED_URL_EXPIRATION_SECONDS = 30
 
@@ -733,17 +734,24 @@ export class SesService {
             return { sent: false, recipients: [], skipped }
         }
 
-        // In non-prod environments, route all emails to dev@vizo-o.com
-        if (process.env.ENV !== 'prod') {
-            const devEmailFrom = process.env?.DEV_EMAIL_FROM ?? 'dev@vizo-o.com'
-            console.log(`Routing non-prod email to ${devEmailFrom}`, {
-                originalTo: validRecipients,
-                from: devEmailFrom,
-                subject,
-            })
-            // validRecipients.splice(0)
-            // validRecipients.push(devEmailFrom)
-            finalFrom = devEmailFrom
+        // Outside prod (ENV !== 'prod', unknown counts as non-prod), only
+        // allowlisted test mailboxes receive mail; everyone else is replaced
+        // by a sink that reaches nobody. Prod recipients are untouched.
+        const routing = routeRecipientsForEnv(validRecipients)
+        const finalRecipients = routing.recipients
+        if (!routing.isProd) {
+            finalFrom = process.env?.DEV_EMAIL_FROM ?? 'dev@vizo-o.com'
+            if (routing.redirected.length > 0) {
+                console.log(
+                    JSON.stringify({
+                        event: 'ses_redirected_non_prod',
+                        env: process.env.ENV ?? 'unknown',
+                        redirected: routing.redirected.map(maskEmail),
+                        sink: routing.sink,
+                        subject,
+                    }),
+                )
+            }
         }
 
         try {
@@ -751,7 +759,7 @@ export class SesService {
                 new SendEmailCommand({
                     FromEmailAddress: finalFrom,
                     Destination: {
-                        ToAddresses: validRecipients,
+                        ToAddresses: finalRecipients,
                     },
                     Content: {
                         Simple: {
@@ -776,10 +784,10 @@ export class SesService {
             )
 
             console.log(
-                `Email sent successfully to ${validRecipients.join(', ')}`,
+                `Email sent successfully to ${finalRecipients.join(', ')}`,
             )
 
-            return { sent: true, recipients: validRecipients, skipped }
+            return { sent: true, recipients: finalRecipients, skipped }
         } catch (error) {
             console.error('Error sending email:', error)
             throw error

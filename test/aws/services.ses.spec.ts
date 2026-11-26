@@ -46,10 +46,11 @@ const base = {
     htmlBody: '<p>Body</p>',
 }
 
-describe('SesService.sendEmail result', () => {
+describe('SesService.sendEmail result (prod)', () => {
     let service: SesService
 
     beforeEach(() => {
+        process.env.ENV = 'prod'
         jest.clearAllMocks()
         mockSesSend.mockResolvedValue({})
         jest.spyOn(console, 'log').mockImplementation()
@@ -58,7 +59,10 @@ describe('SesService.sendEmail result', () => {
         service = new SesService()
     })
 
-    afterEach(() => jest.restoreAllMocks())
+    afterEach(() => {
+        process.env.ENV = 'test'
+        jest.restoreAllMocks()
+    })
 
     it('reports sent when SES accepts the message', async () => {
         statuses({})
@@ -140,5 +144,151 @@ describe('SesService.sendEmail result', () => {
         await expect(
             service.sendEmail({ ...base, to: ['a@example.com'] }),
         ).rejects.toThrow('ses down')
+    })
+})
+
+/** The SendEmailCommand input of the n-th SES call. */
+const sentInput = (n = 0) => mockSesSend.mock.calls[n][0].input
+
+describe('SesService.sendEmail recipients by environment', () => {
+    let service: SesService
+    const saved = { ...process.env }
+
+    beforeEach(() => {
+        jest.clearAllMocks()
+        mockSesSend.mockResolvedValue({})
+        statuses({})
+        jest.spyOn(console, 'log').mockImplementation()
+        jest.spyOn(console, 'warn').mockImplementation()
+        delete process.env.SES_NON_PROD_ALLOWED_RECIPIENTS
+        delete process.env.SES_NON_PROD_SINK
+        delete process.env.DEV_EMAIL_FROM
+        service = new SesService()
+    })
+
+    afterEach(() => {
+        process.env = { ...saved }
+        jest.restoreAllMocks()
+    })
+
+    it('prod sends to the real recipients from the real sender, unchanged', async () => {
+        process.env.ENV = 'prod'
+        process.env.SES_NON_PROD_SINK = 'dev@vizo-o.com'
+
+        const result = await service.sendEmail({
+            ...base,
+            to: ['customer@example.com', 'staff@vizo-o.com'],
+        })
+
+        expect(mockSesSend).toHaveBeenCalledTimes(1)
+        expect(sentInput().FromEmailAddress).toBe('sender@example.com')
+        expect(sentInput().Destination.ToAddresses).toEqual([
+            'customer@example.com',
+            'staff@vizo-o.com',
+        ])
+        expect(result).toEqual({
+            sent: true,
+            recipients: ['customer@example.com', 'staff@vizo-o.com'],
+            skipped: [],
+        })
+    })
+
+    it.each(['dev', 'staging', 'local', 'test', 'production', 'PROD'])(
+        'ENV=%s never reaches a real recipient',
+        async (env) => {
+            process.env.ENV = env
+
+            const result = await service.sendEmail({
+                ...base,
+                to: ['customer@example.com'],
+            })
+
+            expect(sentInput().Destination.ToAddresses).toEqual([
+                'success@simulator.amazonses.com',
+            ])
+            expect(sentInput().FromEmailAddress).toBe('dev@vizo-o.com')
+            expect(result.recipients).toEqual([
+                'success@simulator.amazonses.com',
+            ])
+        },
+    )
+
+    it('a missing ENV counts as non-prod', async () => {
+        delete process.env.ENV
+
+        await service.sendEmail({ ...base, to: ['customer@example.com'] })
+
+        expect(sentInput().Destination.ToAddresses).toEqual([
+            'success@simulator.amazonses.com',
+        ])
+    })
+
+    it('keeps allowlisted test mailboxes and redirects the rest once', async () => {
+        process.env.ENV = 'dev'
+
+        await service.sendEmail({
+            ...base,
+            to: [
+                'Dev@vizo-o.com',
+                'gilaade+lead@vizo-o.com',
+                'carmel@vizo-o.com',
+                'customer@example.com',
+                'bounce@simulator.amazonses.com',
+            ],
+        })
+
+        expect(sentInput().Destination.ToAddresses).toEqual([
+            'Dev@vizo-o.com',
+            'gilaade+lead@vizo-o.com',
+            'bounce@simulator.amazonses.com',
+            'success@simulator.amazonses.com',
+        ])
+    })
+
+    it('logs what was redirected, with masked addresses', async () => {
+        process.env.ENV = 'dev'
+
+        await service.sendEmail({ ...base, to: ['customer@example.com'] })
+
+        const line = (console.log as jest.Mock).mock.calls
+            .map(([first]) => String(first))
+            .find((text) => text.includes('ses_redirected_non_prod'))
+        expect(line).toBeDefined()
+        expect(JSON.parse(line as string)).toMatchObject({
+            event: 'ses_redirected_non_prod',
+            env: 'dev',
+            redirected: ['c***@example.com'],
+            sink: 'success@simulator.amazonses.com',
+        })
+        expect(line).not.toContain('customer@example.com')
+    })
+
+    it('honours an extra allowlist and an allowlisted sink', async () => {
+        process.env.ENV = 'dev'
+        process.env.SES_NON_PROD_ALLOWED_RECIPIENTS =
+            'qa@example.com, @test.vizo-o.com'
+        process.env.SES_NON_PROD_SINK = 'dev@vizo-o.com'
+
+        await service.sendEmail({
+            ...base,
+            to: ['qa@example.com', 'x@test.vizo-o.com', 'real@example.com'],
+        })
+
+        expect(sentInput().Destination.ToAddresses).toEqual([
+            'qa@example.com',
+            'x@test.vizo-o.com',
+            'dev@vizo-o.com',
+        ])
+    })
+
+    it('ignores a sink that is not a test mailbox', async () => {
+        process.env.ENV = 'dev'
+        process.env.SES_NON_PROD_SINK = 'someone@example.com'
+
+        await service.sendEmail({ ...base, to: ['customer@example.com'] })
+
+        expect(sentInput().Destination.ToAddresses).toEqual([
+            'success@simulator.amazonses.com',
+        ])
     })
 })
